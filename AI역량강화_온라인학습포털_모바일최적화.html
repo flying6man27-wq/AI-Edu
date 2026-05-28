@@ -445,6 +445,41 @@ html,body{
   .sidebar{ width:240px; }
   .content-inner{ padding:16px 18px; }
 }
+
+/* ─── AI챔피언 도전 메뉴 ─── */
+.champion-sidebar{border-top:1px solid var(--border);padding:10px 0 6px;margin-top:8px;}
+.champion-item{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;}
+.champion-item:hover{background:var(--gold-dim);}
+.champion-item.active{background:var(--gold-dim);border-left-color:var(--gold);}
+.champion-icon{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--gold),#8B5E00);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.champion-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--gold-dim);color:var(--gold);flex-shrink:0;}
+.champion-hero{background:linear-gradient(135deg,#C8880A,#7A4E00);border-radius:16px;padding:24px 28px;color:#fff;margin-bottom:20px;}
+.champion-hero h1{font-size:20px;font-weight:900;line-height:1.3;margin-bottom:6px;}
+.champion-hero p{font-size:12.5px;opacity:.87;margin-bottom:16px;line-height:1.6;}
+.champion-criteria{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+.criterion-card{background:var(--bg2);border:1.5px solid var(--gold-mid);border-radius:12px;padding:14px 16px;}
+.criterion-icon{font-size:20px;margin-bottom:4px;}
+.criterion-title{font-size:12px;font-weight:800;color:var(--gold);margin-bottom:3px;}
+.criterion-desc{font-size:11px;color:var(--text2);line-height:1.5;}
+.champ-form{background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+.champ-form h3{font-size:15px;font-weight:800;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.champ-field{margin-bottom:13px;}
+.champ-label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;display:block;}
+.champ-input,.champ-select,.champ-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:var(--font);color:var(--text);background:#fff;outline:none;transition:border .15s;-webkit-appearance:none;min-height:44px;}
+.champ-input:focus,.champ-select:focus,.champ-textarea:focus{border-color:var(--gold);}
+.champ-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7A9A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.champ-textarea{min-height:76px;resize:vertical;line-height:1.6;}
+.champ-section-title{font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--gold);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--gold-mid);}
+.champ-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.champ-submit{background:linear-gradient(135deg,var(--gold),#7A4E00);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;padding:15px;min-height:52px;margin-top:6px;transition:opacity .15s;}
+.champ-submit:hover{opacity:.9;}
+.champ-submit:active{opacity:.75;}
+.champ-submit:disabled{opacity:.38;cursor:default;}
+.champ-success{background:var(--green-dim);border:1.5px solid var(--green-mid);border-radius:12px;padding:22px;text-align:center;margin-top:16px;}
+.champ-success h3{color:var(--green);font-size:16px;font-weight:900;margin-bottom:8px;}
+.champ-success p{color:var(--text2);font-size:13px;line-height:1.7;}
+@media(max-width:480px){.champ-row{grid-template-columns:1fr;}.champion-criteria{grid-template-columns:1fr;}}
+
 </style>
 </head>
 <body>
@@ -472,6 +507,9 @@ html,body{
           <option>인터렉스메가라인</option>
           <option>상일식품</option>
           <option>인베스터유나이티드</option>
+          <option>우리인터텍스</option>
+          <option>세코글로벌</option>
+          <option>미찌푸드</option>
         </select>
       </div>
       <div class="login-field">
@@ -517,6 +555,18 @@ html,body{
         <p>클릭하여 학습을 시작하세요</p>
       </div>
       <div id="sidebarList"></div>
+      <div class="champion-sidebar">
+        <div class="track-label" style="color:var(--gold)">AI챔피언 도전</div>
+        <div class="champion-item" id="championSidebarItem"
+             onclick="renderChampion(); if(isMobile()){closeSidebar(); setBottomNav('champion');}">
+          <div class="champion-icon">🏆</div>
+          <div class="mod-info">
+            <div class="mod-title" style="color:var(--gold)">AI챔피언 추천·지원</div>
+            <div class="mod-meta">후보자 추천서 제출</div>
+          </div>
+          <span class="champion-badge">NEW</span>
+        </div>
+      </div>
     </div>
 
     <!-- CONTENT -->
@@ -535,6 +585,9 @@ html,body{
     </button>
     <button class="bottom-nav-btn" id="bnProgress" onclick="renderHome(); setBottomNav('home')">
       <span class="bottom-nav-icon">📊</span>진도
+    </button>
+    <button class="bottom-nav-btn" id="bnChampion" onclick="renderChampion(); setBottomNav('champion')">
+      <span class="bottom-nav-icon">🏆</span>챔피언
     </button>
   </div>
 </div>
@@ -962,11 +1015,12 @@ function isMobile() { return window.innerWidth <= 768; }
 
 // ─── BOTTOM NAV ──────────────────────────────────────────────────────────────
 function setBottomNav(active) {
-  ['bnHome','bnList','bnProgress'].forEach(id=>{
+  ['bnHome','bnList','bnProgress','bnChampion'].forEach(id=>{
     document.getElementById(id)?.classList.remove('active');
   });
   if (active === 'home') document.getElementById('bnHome')?.classList.add('active');
-  if (active === 'list') document.getElementById('bnList')?.classList.add('active');
+  if (active === 'list')     document.getElementById('bnList')?.classList.add('active');
+  if (active === 'champion') document.getElementById('bnChampion')?.classList.add('active');
 }
 
 // ─── RENDER SIDEBAR ──────────────────────────────────────────────────────────
@@ -1019,6 +1073,7 @@ function updateGlobalProgress() {
 // ─── RENDER HOME ─────────────────────────────────────────────────────────────
 function renderHome() {
   currentModId = null;
+  document.getElementById('championSidebarItem')?.classList.remove('active');
   const done = getDoneCount();
   const reqDone = getRequiredDoneCount();
   const tracks = [...new Set(MODULES.map(m=>m.track))];
@@ -1070,6 +1125,7 @@ function renderHome() {
 // ─── RENDER MODULE ────────────────────────────────────────────────────────────
 function loadModule(id) {
   currentModId = id;
+  document.getElementById('championSidebarItem')?.classList.remove('active');
   quizAnswers = {};
   quizSubmitted = false;
   renderSidebar();
@@ -1267,6 +1323,121 @@ window.addEventListener('message', function(e) {
     }
   } catch(_) {}
 }, false);
+
+
+// ─── AI챔피언 도전 ────────────────────────────────────────────────────────────
+function renderChampion() {
+  currentModId = null;
+  renderSidebar();
+  document.getElementById('championSidebarItem')?.classList.add('active');
+  updateGlobalProgress();
+  document.getElementById('contentArea').innerHTML = `
+    <div class="champion-hero">
+      <h1>🏆 AI챔피언 도전</h1>
+      <p>AI 역량이 뛰어난 동료를 추천하거나 직접 지원하세요.<br>AI챔피언은 부서의 AI 전환을 이끄는 핵심 인재입니다.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="background:rgba(255,255,255,.18);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;">선발 인원: 회사당 1~2명</span>
+        <span style="background:rgba(255,255,255,.18);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;">추천 기간: 2026년 6~7월</span>
+        <span style="background:rgba(255,255,255,.18);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;">자기 추천 가능</span>
+      </div>
+    </div>
+    <div class="champion-criteria">
+      <div class="criterion-card"><div class="criterion-icon">🎯</div><div class="criterion-title">AI 기초 역량</div><div class="criterion-desc">필수 기초 4개 모듈 이수 및 실무 활용 의지 보유</div></div>
+      <div class="criterion-card"><div class="criterion-icon">📣</div><div class="criterion-title">전파·교육력</div><div class="criterion-desc">부서 내 AI 활용법을 동료에게 전파할 역량과 의지</div></div>
+      <div class="criterion-card"><div class="criterion-icon">💡</div><div class="criterion-title">혁신 마인드셋</div><div class="criterion-desc">업무 개선과 AI DX 변화에 긍정적이고 적극적인 태도</div></div>
+      <div class="criterion-card"><div class="criterion-icon">🤝</div><div class="criterion-title">협업·소통력</div><div class="criterion-desc">팀 내외 원활한 소통과 협업 능력</div></div>
+    </div>
+    <div class="champ-form">
+      <h3>📋 후보자 추천 양식</h3>
+      <div class="champ-section-title">추천인 정보</div>
+      <div class="champ-row">
+        <div class="champ-field"><label class="champ-label">추천인 성명 *</label><input class="champ-input" id="c_recommenderName" type="text" placeholder="홍길동" maxlength="20" autocomplete="name"></div>
+        <div class="champ-field"><label class="champ-label">소속 회사 *</label>
+          <select class="champ-select" id="c_company">
+            <option value="">— 선택하세요 —</option>
+            <option>연합</option><option>좋은사람들</option><option>휴맥스해운항공</option><option>쌤앤파커스</option>
+            <option>인터렉스메가라인</option><option>상일식품</option><option>인베스터유나이티드</option>
+            <option>우리인터텍스</option><option>세코글로벌</option><option>미찌푸드</option>
+          </select>
+        </div>
+      </div>
+      <div class="champ-row">
+        <div class="champ-field"><label class="champ-label">부서 / 직책</label><input class="champ-input" id="c_recommenderDept" type="text" placeholder="인사팀 / 대리"></div>
+        <div class="champ-field"><label class="champ-label">이메일 *</label><input class="champ-input" id="c_recommenderEmail" type="email" placeholder="hong@company.com" autocomplete="email"></div>
+      </div>
+      <div class="champ-section-title">추천 후보자 정보</div>
+      <div class="champ-field"><label class="champ-label">추천 유형 *</label>
+        <select class="champ-select" id="c_type">
+          <option value="">— 선택하세요 —</option>
+          <option value="recommend">타인 추천 (동료·부하·상사 추천)</option>
+          <option value="self">자기 추천 (본인이 직접 지원)</option>
+        </select>
+      </div>
+      <div class="champ-row">
+        <div class="champ-field"><label class="champ-label">후보자 성명 *</label><input class="champ-input" id="c_candidateName" type="text" placeholder="홍길동"></div>
+        <div class="champ-field"><label class="champ-label">후보자 직급</label><input class="champ-input" id="c_candidateLevel" type="text" placeholder="대리"></div>
+      </div>
+      <div class="champ-row">
+        <div class="champ-field"><label class="champ-label">후보자 부서</label><input class="champ-input" id="c_candidateDept" type="text" placeholder="영업팀"></div>
+        <div class="champ-field"><label class="champ-label">후보자 이메일</label><input class="champ-input" id="c_candidateEmail" type="email" placeholder="candidate@company.com"></div>
+      </div>
+      <div class="champ-section-title">추천 사유</div>
+      <div class="champ-field"><label class="champ-label">AI 역량 보유 현황 *</label><textarea class="champ-textarea" id="c_aiSkill" placeholder="현재 AI 도구 활용 경험, 프롬프트 작성 능력, 학습 이력 등을 구체적으로 기술해 주세요."></textarea></div>
+      <div class="champ-field"><label class="champ-label">업무 혁신 사례</label><textarea class="champ-textarea" id="c_innovation" placeholder="AI 또는 디지털 도구를 활용해 업무를 개선한 경험이 있다면 기술해 주세요."></textarea></div>
+      <div class="champ-field"><label class="champ-label">동료 영향력 및 리더십</label><textarea class="champ-textarea" id="c_leadership" placeholder="팀 내 소통·협업 방식, 동료에게 미치는 긍정적 영향에 대해 기술해 주세요."></textarea></div>
+      <div class="champ-field"><label class="champ-label">추천 한 줄 요약 *</label><input class="champ-input" id="c_summary" type="text" placeholder="예) AI 친화적 마인드로 팀 내 디지털 전환을 선도하는 인재" maxlength="100"></div>
+      <div class="champ-section-title">활동 가능 여부</div>
+      <div class="champ-row">
+        <div class="champ-field"><label class="champ-label">월 2~4회 챔피언 활동 가능 여부</label>
+          <select class="champ-select" id="c_available">
+            <option value="">— 선택 —</option>
+            <option value="yes">가능</option><option value="partial">부분적으로 가능</option><option value="no">어려움 (사전 협의 필요)</option>
+          </select>
+        </div>
+        <div class="champ-field"><label class="champ-label">팀장 사전 동의 여부</label>
+          <select class="champ-select" id="c_managerConsent">
+            <option value="">— 선택 —</option>
+            <option value="yes">동의 완료</option><option value="pending">협의 중</option><option value="no">미확인</option>
+          </select>
+        </div>
+      </div>
+      <button class="champ-submit" onclick="submitChampion()">🏆 추천서 제출하기</button>
+      <div id="champResult"></div>
+    </div>`;
+  document.querySelector('.content').scrollTop = 0;
+}
+
+async function submitChampion() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const recommenderName=g('c_recommenderName'), company=g('c_company'),
+        recommenderEmail=g('c_recommenderEmail'), type=g('c_type'),
+        candidateName=g('c_candidateName'), aiSkill=g('c_aiSkill'), summary=g('c_summary');
+  if (!recommenderName||!company||!recommenderEmail||!type||!candidateName||!aiSkill||!summary){
+    alert('필수 항목(*)을 모두 입력해 주세요.'); return;
+  }
+  if (!recommenderEmail.includes('@')){ alert('추천인 이메일 형식을 확인해 주세요.'); return; }
+  const btn=document.querySelector('.champ-submit');
+  btn.disabled=true; btn.textContent='제출 중...';
+  const data={
+    submittedAt:new Date().toISOString(), recommenderName, company,
+    recommenderDept:g('c_recommenderDept'), recommenderEmail, type, candidateName,
+    candidateLevel:g('c_candidateLevel'), candidateDept:g('c_candidateDept'),
+    candidateEmail:g('c_candidateEmail'), aiSkill, innovation:g('c_innovation'),
+    leadership:g('c_leadership'), summary, available:g('c_available'),
+    managerConsent:g('c_managerConsent'),
+  };
+  if(db){ try{ await db.collection('champion_nominees').add({...data, submittedAt:firebase.firestore.FieldValue.serverTimestamp()}); }catch(e){console.warn(e);} }
+  try{ const a=JSON.parse(localStorage.getItem('ai_champion_submissions')||'[]'); a.push(data); localStorage.setItem('ai_champion_submissions',JSON.stringify(a)); }catch(_){}
+  btn.style.display='none';
+  document.getElementById('champResult').innerHTML=`
+    <div class="champ-success">
+      <div style="font-size:36px;margin-bottom:8px;">🎉</div>
+      <h3>추천서가 접수되었습니다!</h3>
+      <p><strong>${candidateName}</strong>님의 AI챔피언 후보 추천서가 성공적으로 제출되었습니다.<br>
+      HR팀 검토 후 추천인(<strong>${recommenderEmail}</strong>)께 결과를 안내드리겠습니다.<br><br>
+      제출 일시: ${new Date().toLocaleString('ko-KR')}</p>
+    </div>`;
+}
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 initFirebase();
