@@ -99,7 +99,7 @@ body{font-family:var(--font);background:#F0F2F8;color:var(--text);-webkit-font-s
 
 <div class="wrap" id="wrap" style="display:none;">
   <div class="toolbar">
-    <label style="font-size:12px;font-weight:700;color:var(--text2)">계열사</label>
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">관계사</label>
     <select id="coSel" onchange="render()"></select>
     <button class="print-btn" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
   </div>
@@ -149,7 +149,7 @@ function populate(){
   const prev=sel.value;
   const dataCos=[...new Set(learners.map(l=>l.company).filter(Boolean))];
   const cos=[...new Set([...COMPANIES,...dataCos])];
-  sel.innerHTML='<option value="__ALL__">🏢 전체 계열사 요약</option>'+cos.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.innerHTML='<option value="__ALL__">🏢 전체 관계사 요약</option>'+cos.map(c=>`<option value="${c}">${c}</option>`).join('');
   sel.value=prev||'__ALL__';
 }
 function selectCo(c){const s=document.getElementById('coSel');s.value=c;render();}
@@ -196,7 +196,7 @@ function renderCompany(co){
   const steps=nextSteps(ls,co,t);
   document.getElementById('body').innerHTML=`
   <div class="hd"><div class="hd-meta">${weekRange(now)} (주간)<br>작성일 ${now.toLocaleDateString('ko-KR')}</div>
-    <div class="hd-badge">🏢 계열사 AI 역량강화</div>
+    <div class="hd-badge">🏢 관계사 AI 역량강화</div>
     <div class="hd-co">${co}</div><div class="hd-t">AI 역량강화 주간 성과 보고서</div></div>
   <div class="sec">📌 이번 주 핵심 지표</div><div class="kpis">${kpis}</div>
   <div class="sec">💻 온라인 학습 현황</div>
@@ -254,19 +254,19 @@ function renderGroup(){
   const now=new Date();
   document.getElementById('body').innerHTML=`
   <div class="hd"><div class="hd-meta">${weekRange(now)} (주간)<br>작성일 ${now.toLocaleDateString('ko-KR')}</div>
-    <div class="hd-badge">🏢 그룹 통합</div><div class="hd-co">전체 계열사 교육 참여 현황</div><div class="hd-t">${TARGET_BASIS}</div></div>
-  <div class="sec">📌 그룹 핵심 지표</div>
+    <div class="hd-badge">🏢 SECO 비제조부문 통합</div><div class="hd-co">전체 관계사 교육 참여 현황</div><div class="hd-t">${TARGET_BASIS}</div></div>
+  <div class="sec">📌 SECO 비제조부문 핵심 지표</div>
   <div class="kpis">
     ${kCard('--blue','참여 대상',sumT,'명','전체 11개사 합계',100)}
     ${kCard('--green','등록 인원',sumReg,'명',`등록률 ${totReg}%`,totReg)}
     ${kCard('--gold','수강 중',sumEnr,'명',`수강률 ${totEnr}%`,totEnr)}
     ${kCard('--purple','미등록',Math.max(sumT-sumReg,0),'명','대상 대비 미가입',sumT?Math.round((sumT-sumReg)/sumT*100):0)}
   </div>
-  <div class="sec">📊 계열사별 요약</div>
+  <div class="sec">📊 관계사별 요약</div>
   <div class="card">
-    <table class="gsum"><thead><tr><th>계열사</th><th>대상</th><th>등록</th><th>수강</th><th>등록률</th><th>평균이수</th></tr></thead>
+    <table class="gsum"><thead><tr><th>관계사</th><th>대상</th><th>등록</th><th>수강</th><th>등록률</th><th>평균이수</th></tr></thead>
     <tbody>${rows}<tr class="tot"><td>합계 (전체 11개사)</td><td>${sumT}</td><td>${sumReg}</td><td>${sumEnr}</td><td>${totReg}%</td><td>—</td></tr></tbody></table>
-    <div style="font-size:11px;color:var(--gray);margin-top:10px;">행을 클릭하면 해당 계열사 상세 보고서로 이동합니다.</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:10px;">행을 클릭하면 해당 관계사 상세 보고서로 이동합니다.</div>
   </div>`;
 }
 </script>
