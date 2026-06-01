@@ -915,7 +915,8 @@ function doLogin() {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   document.getElementById('loginOverlay').classList.add('hidden');
   applyUserUI(user);
-  if (db) syncUserToFirebase(user);
+  // 동일 이메일로 이미 학습한 기록이 클라우드에 있으면 진도를 이어받는다.
+  if (db) restoreProgressAndRefresh(user); else { renderHome(); updateGlobalProgress(); }
 }
 
 function applyUserUI(user) {
@@ -957,6 +958,40 @@ async function syncModuleToFirebase(id, score) {
     update[`modules.${id}`] = { completed: true, completedAt: firebase.firestore.FieldValue.serverTimestamp(), score: score != null ? score : 0 };
     await db.collection('learners').doc(user.uid).set(update, { merge: true });
   } catch(e) { console.warn('[Firebase] 모듈 동기화 실패:', e); }
+}
+
+// 클라우드(Firestore)에 저장된 진도를 읽어와 로컬(localStorage)에 병합 복원한다.
+// 기기를 바꿔 접속해도 동일 이메일이면 진도가 이어진다. (완료여부는 OR 병합 — 한쪽이라도 완료면 완료)
+async function loadProgressFromFirebase(user) {
+  if (!db || !user) return false;
+  try {
+    const snap = await db.collection('learners').doc(user.uid).get();
+    if (!snap.exists) return false;
+    const mods = (snap.data() || {}).modules || {};
+    const p = getProgress();
+    const s = getScores();
+    let changed = false;
+    Object.keys(mods).forEach(id => {
+      const m = mods[id];
+      if (m && m.completed && !p[id]) {
+        p[id] = true;
+        s[id] = { score: (m.score != null ? m.score : 0), completedAt: Date.now() };
+        changed = true;
+      }
+    });
+    if (changed) { saveProgress(p); saveScores(s); }
+    return changed;
+  } catch(e) { console.warn('[Firebase] 진도 복원 실패:', e); return false; }
+}
+
+// 클라우드 진도를 복원한 뒤 화면을 갱신하고, 그 다음에 사용자 정보를 동기화한다.
+// (반드시 "복원 → 화면갱신 → 동기화" 순서여야 PC 재접속 시 0% 값으로 완료율을 덮어쓰지 않음)
+async function restoreProgressAndRefresh(user) {
+  await loadProgressFromFirebase(user);
+  if (currentModId) { loadModule(currentModId); } else { renderHome(); }
+  renderSidebar();
+  updateGlobalProgress();
+  syncUserToFirebase(user);
 }
 
 // ─── PROGRESS ────────────────────────────────────────────────────────────────
@@ -1442,13 +1477,14 @@ async function submitChampion() {
 // ─── INIT ────────────────────────────────────────────────────────────────────
 initFirebase();
 const _savedUser = getCurrentUser();
+renderHome();
+updateGlobalProgress();
 if (_savedUser) {
   document.getElementById('loginOverlay').classList.add('hidden');
   applyUserUI(_savedUser);
-  if (db) syncUserToFirebase(_savedUser);
+  // 접속 시 클라우드 진도를 먼저 복원한 뒤 화면을 갱신한다. (기기 변경 시에도 진도 유지)
+  if (db) restoreProgressAndRefresh(_savedUser);
 }
-renderHome();
-updateGlobalProgress();
 
 // 키보드 ESC로 사이드바 닫기
 document.addEventListener('keydown', function(e) {
