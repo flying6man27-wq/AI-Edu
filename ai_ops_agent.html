@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -170,7 +171,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <div class="auth-icon">🤖</div>
     <div class="auth-title">운영유지 에이전트</div>
     <div class="auth-sub">비제조부문 AI 역량강화 포털 자동 모니터링 시스템<br>HR 인사팀 관리자 전용</div>
-    <input class="auth-input" id="authPw" type="password" placeholder="관리자 비밀번호">
+    <input class="auth-input" id="authEmail" type="email" placeholder="관리자 이메일" autocomplete="username">
+    <input class="auth-input" id="authPw" type="password" placeholder="비밀번호" autocomplete="current-password">
     <button class="auth-btn" onclick="doAuth()">에이전트 시작</button>
     <div class="auth-err" id="authErr"></div>
   </div>
@@ -272,7 +274,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 // ═══════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════
-const ADMIN_PW = 'hr2024!';
+const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
 const FIREBASE_CONFIG = {
   apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
   authDomain:"ai-edu-seco.firebaseapp.com",
@@ -293,19 +295,37 @@ let OPS_LOG = JSON.parse(localStorage.getItem('ops_log_v1')||'[]');
 let db = null, allLearners = [], allChampions = [], allOffline = [];
 let checkInterval = null;
 
-// ── AUTH ────────────────────────────────────────────────
-function doAuth(){
+// ── AUTH (Firebase Authentication) ──────────────────────
+function ensureFirebaseApp(){ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); }
+async function doAuth(){
+  const email = (document.getElementById('authEmail').value||'').trim();
   const pw = document.getElementById('authPw').value;
-  if(pw===ADMIN_PW){
-    document.getElementById('authWrap').classList.add('hidden');
-    document.getElementById('mainPage').style.display='block';
-    initAgent();
-  } else {
-    document.getElementById('authErr').textContent='비밀번호 오류';
+  const errEl = document.getElementById('authErr');
+  if(!email || !pw){ errEl.textContent='이메일과 비밀번호를 입력하세요.'; return; }
+  ensureFirebaseApp();
+  try {
+    const cred = await firebase.auth().signInWithEmailAndPassword(email, pw);
+    if(cred.user.uid !== ADMIN_UID){
+      errEl.textContent='관리자 권한이 없는 계정입니다.';
+      await firebase.auth().signOut();
+      return;
+    }
+    enterAgent();
+  } catch(e){
+    errEl.textContent='로그인 실패 · 이메일/비밀번호를 확인하세요.';
     document.getElementById('authPw').value='';
   }
 }
+function enterAgent(){
+  document.getElementById('authWrap').classList.add('hidden');
+  document.getElementById('mainPage').style.display='block';
+  initAgent();
+}
+function doLogout(){ firebase.auth().signOut().finally(()=>location.reload()); }
 document.getElementById('authPw').addEventListener('keydown',e=>{if(e.key==='Enter')doAuth();});
+// 이미 관리자로 로그인된 세션이면 자동 진입
+ensureFirebaseApp();
+firebase.auth().onAuthStateChanged((u)=>{ if(u && u.uid===ADMIN_UID) enterAgent(); });
 
 // ── FIREBASE INIT ────────────────────────────────────────
 function initAgent(){
@@ -620,7 +640,7 @@ function buildContext(){
   const reqPass=allLearners.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m]&&l.modules[m].completed)).length;
   const avg=total?Math.round(allLearners.reduce((s,l)=>s+(l.completionRate||0),0)/total):0;
   let sumT=0;Object.values(TARGET_HEADCOUNT).forEach(t=>{if(t)sumT+=t;});
-  return JSON.stringify({총학습자:total,대상인원:sumT,등록률:Math.round(total/sumT*100)+'%',평균이수율:avg+'%',필수이수완료:reqPass,7일미접속:inactive,미시작:notStarted,챔피언후보:allChampions.length,오프라인세션:allOffline.length});
+  return JSON.stringify({총학습자:total,대상인원:sumT,등록률:Math.round(total/sumT*100)+'%',평균이수율:avg+'%',필수이수완료:reqPass,'7일미접속':inactive,미시작:notStarted,챔피언후보:allChampions.length,오프라인세션:allOffline.length});
 }
 
 // ── UTILS ─────────────────────────────────────────────────
