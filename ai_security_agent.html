@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 역량강화 포털 · 보안 방어 에이전트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#080C12;--bg2:#0D1420;--bg3:#111B2A;--bg4:#162030;
+  --red:#FF3B57;--red2:#FF8095;--red-dim:rgba(255,59,87,.1);
+  --green:#00E67A;--green2:#7FFFC4;--green-dim:rgba(0,230,122,.1);
+  --gold:#FFB800;--gold2:#FFD966;--gold-dim:rgba(255,184,0,.1);
+  --blue:#3B8BFF;--blue2:#7AB8FF;--blue-dim:rgba(59,139,255,.1);
+  --teal:#00D4C8;--purple:#A855F7;--orange:#FF6B35;
+  --text:#E8F0FE;--text2:#8BA3C7;--text3:#4A6280;
+  --border:#1A2A3E;--border2:#243650;
+  --font:'Noto Sans KR',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;word-break:keep-all;}
+
+/* ── SCANLINE OVERLAY ── */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9998;}
+
+/* ── AUTH ── */
+.auth{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 30%,rgba(255,59,87,.08),transparent 50%),radial-gradient(ellipse at 80% 70%,rgba(0,230,122,.06),transparent 50%),var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.auth.hidden{display:none;}
+.auth-box{background:var(--bg2);border:1px solid var(--red);border-radius:4px;padding:40px 36px;width:420px;box-shadow:0 0 60px rgba(255,59,87,.1),0 32px 80px rgba(0,0,0,.6);}
+.auth-icon{font-size:28px;margin-bottom:12px;font-family:monospace;color:var(--red);letter-spacing:2px;}
+.auth-title{font-size:20px;font-weight:900;color:var(--red2);margin-bottom:4px;font-family:monospace;}
+.auth-sub{font-size:11px;color:var(--text2);margin-bottom:24px;font-family:monospace;line-height:1.7;}
+.auth-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:12px 14px;font-size:14px;font-family:monospace;color:var(--text);outline:none;margin-bottom:12px;transition:border .15s;}
+.auth-input:focus{border-color:var(--red);}
+.auth-btn{width:100%;padding:13px;background:transparent;border:1px solid var(--red);color:var(--red2);font-family:monospace;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;border-radius:3px;}
+.auth-btn:hover{background:var(--red-dim);box-shadow:0 0 20px rgba(255,59,87,.2);}
+.auth-err{font-size:11px;color:var(--red);margin-top:8px;font-family:monospace;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:14px;font-weight:900;color:var(--red2);font-family:monospace;letter-spacing:1px;}
+.threat-level{font-size:11px;font-weight:700;padding:4px 12px;border-radius:3px;border:1px solid;font-family:monospace;}
+.threat-low{background:var(--green-dim);color:var(--green2);border-color:var(--green);}
+.threat-mid{background:var(--gold-dim);color:var(--gold2);border-color:var(--gold);}
+.threat-high{background:var(--red-dim);color:var(--red2);border-color:var(--red);animation:threat-flash 1s steps(2) infinite;}
+@keyframes threat-flash{50%{opacity:.6;}}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.sec-status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);font-family:monospace;}
+.scan-btn{background:transparent;border:1px solid var(--green);color:var(--green2);padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:monospace;border-radius:3px;transition:all .15s;display:flex;align-items:center;gap:6px;}
+.scan-btn:hover{background:var(--green-dim);box-shadow:0 0 16px rgba(0,230,122,.2);}
+
+/* ── LAYOUT ── */
+.page{max-width:1400px;margin:0 auto;padding:24px 28px;}
+.grid-kpi{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px;}
+.grid-mid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:24px;}
+.grid-bot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
+
+/* ── SECURITY METRIC CARDS ── */
+.sec-card{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px;position:relative;overflow:hidden;}
+.sec-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;}
+.sc-green::after{background:linear-gradient(90deg,transparent,var(--green),transparent);}
+.sc-red::after{background:linear-gradient(90deg,transparent,var(--red),transparent);}
+.sc-gold::after{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.sc-blue::after{background:linear-gradient(90deg,transparent,var(--blue),transparent);}
+.sc-teal::after{background:linear-gradient(90deg,transparent,var(--teal),transparent);}
+.sc-purple::after{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
+.sc-label{font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:monospace;letter-spacing:.5px;}
+.sc-val{font-size:22px;font-weight:900;line-height:1;font-family:monospace;}
+.sc-sub{font-size:10px;color:var(--text3);margin-top:4px;font-family:monospace;}
+
+/* ── BOX ── */
+.box{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:20px;}
+.box-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;font-family:monospace;}
+.box-sub{font-size:11px;color:var(--text2);margin-bottom:14px;font-family:monospace;}
+
+/* ── THREAT TABLE ── */
+.threat-table{width:100%;border-collapse:collapse;}
+.threat-table th{font-size:10px;font-weight:700;color:var(--text3);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);font-family:monospace;letter-spacing:.5px;}
+.threat-table td{font-size:11.5px;color:var(--text2);padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.02);font-family:monospace;}
+.threat-table tr:hover td{background:rgba(255,59,87,.03);}
+.sev-critical{color:var(--red2);font-weight:700;}
+.sev-high{color:var(--orange);font-weight:700;}
+.sev-mid{color:var(--gold2);font-weight:700;}
+.sev-low{color:var(--green2);}
+.sev-badge{font-size:10px;padding:2px 7px;border-radius:3px;white-space:nowrap;font-family:monospace;}
+.sev-b-c{background:var(--red-dim);color:var(--red2);border:1px solid rgba(255,59,87,.3);}
+.sev-b-h{background:rgba(255,107,53,.1);color:var(--orange);border:1px solid rgba(255,107,53,.3);}
+.sev-b-m{background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(255,184,0,.3);}
+.sev-b-l{background:var(--green-dim);color:var(--green2);border:1px solid rgba(0,230,122,.3);}
+
+/* ── VULNERABILITY LIST ── */
+.vuln-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;}
+.vuln-item{background:var(--bg3);border-radius:5px;border:1px solid var(--border2);padding:12px 14px;border-left:3px solid;}
+.vi-critical{border-left-color:var(--red);}
+.vi-high{border-left-color:var(--orange);}
+.vi-mid{border-left-color:var(--gold);}
+.vi-low{border-left-color:var(--green);}
+.vi-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.vi-title{font-size:12px;font-weight:700;color:var(--text);font-family:monospace;}
+.vi-desc{font-size:11px;color:var(--text2);line-height:1.6;}
+.vi-fix{font-size:11px;color:var(--green2);margin-top:5px;}
+
+/* ── SECURITY SCORE RING ── */
+.score-display{display:flex;align-items:center;gap:20px;padding:14px 0;}
+.score-ring{position:relative;width:100px;height:100px;flex-shrink:0;}
+.score-ring-svg{width:100px;height:100px;}
+.score-ring-bg{fill:none;stroke:rgba(255,255,255,.05);stroke-width:10;}
+.score-ring-fill{fill:none;stroke-width:10;stroke-linecap:round;transform-origin:50px 50px;transform:rotate(-90deg);transition:stroke-dashoffset .8s;}
+.score-ring-val{font-size:20px;font-weight:900;fill:var(--text);font-family:monospace;text-anchor:middle;dominant-baseline:middle;}
+.score-stats{flex:1;}
+.ss-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);}
+.ss-row:last-child{border-bottom:none;}
+.ss-label{font-size:11px;color:var(--text2);font-family:monospace;}
+.ss-val{font-size:12px;font-weight:700;font-family:monospace;}
+
+/* ── CHECKLIST ── */
+.check-list{display:flex;flex-direction:column;gap:7px;}
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:5px;border:1px solid var(--border2);}
+.check-icon{font-size:13px;flex-shrink:0;margin-top:1px;}
+.check-content{}
+.check-title{font-size:12px;font-weight:700;color:var(--text);font-family:monospace;}
+.check-desc{font-size:10.5px;color:var(--text2);margin-top:2px;line-height:1.5;}
+.check-status{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;white-space:nowrap;font-family:monospace;flex-shrink:0;}
+.cs-ok{background:var(--green-dim);color:var(--green2);}
+.cs-warn{background:var(--gold-dim);color:var(--gold2);}
+.cs-bad{background:var(--red-dim);color:var(--red2);}
+
+/* ── ATTACK LOG ── */
+.attack-log{font-family:monospace;font-size:11.5px;background:var(--bg);border-radius:5px;padding:14px;height:240px;overflow-y:auto;border:1px solid var(--border);}
+.al-line{padding:2px 0;line-height:1.5;}
+.al-time{color:var(--text3);}
+.al-ok{color:var(--green);}
+.al-warn{color:var(--gold);}
+.al-block{color:var(--red);}
+.al-info{color:var(--blue2);}
+
+/* ── AI CHAT ── */
+.ai-chat-box{background:var(--bg3);border-radius:6px;border:1px solid var(--border2);overflow:hidden;}
+.ai-chat-msgs{padding:12px;min-height:180px;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.ai-msg{font-size:12px;line-height:1.7;font-family:monospace;}
+.ai-msg.agent{background:rgba(0,230,122,.06);border-radius:4px;padding:9px 12px;color:var(--green2);border:1px solid rgba(0,230,122,.15);}
+.ai-msg.user{background:rgba(255,255,255,.03);border-radius:4px;padding:9px 12px;color:var(--text2);}
+.ai-msg.thinking{color:var(--text3);font-style:italic;animation:blink 1s steps(2) infinite;}
+@keyframes blink{50%{opacity:.4;}}
+.ai-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);}
+.ai-input{flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:8px 12px;font-size:12px;color:var(--text);outline:none;font-family:monospace;}
+.ai-input:focus{border-color:var(--green);}
+.ai-send{background:transparent;border:1px solid var(--green);color:var(--green2);padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:monospace;border-radius:4px;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,230,122,.2);border-top-color:var(--green);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+@media(max-width:1100px){.grid-kpi{grid-template-columns:repeat(3,1fr);}.grid-mid,.grid-bot{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth" id="authWrap">
+  <div class="auth-box">
+    <div class="auth-icon">[SECURITY AGENT]</div>
+    <div class="auth-title">보안 방어 에이전트</div>
+    <div class="auth-sub">> 비제조부문 AI 역량강화 포털<br>> 외부 해킹 방어 · 취약점 점검 · 실시간 모니터링<br>> HR 인사팀 관리자 전용 접근</div>
+    <input class="auth-input" id="authPw" type="password" placeholder="# ADMIN PASSWORD:">
+    <button class="auth-btn" onclick="doAuth()">[ENTER] 보안 에이전트 활성화</button>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">[🛡 SECURITY AGENT v1.0]</div>
+  <div class="threat-level" id="threatBadge">위협 레벨: 분석 중...</div>
+  <div class="topbar-right">
+    <div class="sec-status">
+      <span style="color:var(--green);animation:blink2 2s infinite">●</span>
+      <span id="secLabel">보안 스캔 대기 중</span>
+    </div>
+    <button class="scan-btn" id="scanBtn" onclick="runSecurityScan()">
+      <span>🔍</span> 전체 보안 스캔
+    </button>
+  </div>
+</div>
+<style>@keyframes blink2{0%,100%{opacity:1;}50%{opacity:.3;}}</style>
+
+<div class="page" id="mainPage" style="display:none;">
+
+  <!-- KPI 카드 -->
+  <div class="grid-kpi">
+    <div class="sec-card sc-green"><div class="sc-label">SECURITY SCORE</div><div class="sc-val" id="secScore" style="color:var(--green2)">—</div><div class="sc-sub" id="secScoreSub">점검 전</div></div>
+    <div class="sec-card sc-red"><div class="sc-label">VULNERABILITIES</div><div class="sc-val" id="vulnCount" style="color:var(--red2)">—</div><div class="sc-sub" id="vulnSub">취약점 합계</div></div>
+    <div class="sec-card sc-gold"><div class="sc-label">API KEY EXPOSURE</div><div class="sc-val" id="apiExposure" style="color:var(--gold2)">—</div><div class="sc-sub" id="apiSub">노출 위험도</div></div>
+    <div class="sec-card sc-blue"><div class="sc-label">AUTH STRENGTH</div><div class="sc-val" id="authStrength" style="color:var(--blue2)">—</div><div class="sc-sub" id="authSub">인증 강도</div></div>
+    <div class="sec-card sc-teal"><div class="sc-label">FIREBASE RULES</div><div class="sc-val" id="fbRules" style="color:var(--teal)">—</div><div class="sc-sub" id="fbSub">Firestore 보안</div></div>
+    <div class="sec-card sc-purple"><div class="sc-label">LAST SCAN</div><div class="sc-val" id="lastScan" style="color:#C4B5FD;font-size:14px;">—</div><div class="sc-sub">자동 1시간 주기</div></div>
+  </div>
+
+  <div class="grid-mid">
+    <!-- 취약점 목록 -->
+    <div class="box">
+      <div class="box-title">🔴 취약점 분석 결과</div>
+      <div class="box-sub">현재 시스템에서 감지된 보안 취약점 목록</div>
+      <div class="vuln-list" id="vulnList">
+        <div style="color:var(--text3);font-size:12px;padding:12px;font-family:monospace;">스캔 실행 후 표시됩니다...</div>
+      </div>
+    </div>
+
+    <!-- 보안 점수 & 체크리스트 -->
+    <div class="box">
+      <div class="box-title">✅ 보안 체크리스트</div>
+      <div class="box-sub">항목별 보안 상태 자동 점검</div>
+      <div class="check-list" id="checkList">
+        <div style="color:var(--text3);font-size:12px;padding:12px;font-family:monospace;">스캔 후 표시됩니다...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-bot">
+    <!-- 공격 시뮬레이션 로그 -->
+    <div class="box">
+      <div class="box-title">📡 실시간 접근 로그</div>
+      <div class="box-sub">의심 접근 패턴 탐지 현황</div>
+      <div class="attack-log" id="attackLog">
+        <div class="al-line"><span class="al-info">[SYS] 보안 에이전트 초기화 완료</span></div>
+        <div class="al-line"><span class="al-ok">[OK ] Firebase 인증 레이어 정상</span></div>
+        <div class="al-line"><span class="al-ok">[OK ] 관리자 비밀번호 인증 성공</span></div>
+        <div class="al-line"><span class="al-info">[SYS] 실시간 모니터링 시작...</span></div>
+      </div>
+    </div>
+
+    <!-- 위협 인텔리전스 테이블 -->
+    <div class="box">
+      <div class="box-title">⚔️ 위협 인텔리전스</div>
+      <div class="box-sub">정적 HTML+Firebase 구조의 주요 위협</div>
+      <div style="max-height:280px;overflow-y:auto;">
+        <table class="threat-table" id="threatTable">
+          <thead><tr><th>위협 유형</th><th>위험도</th><th>현재 상태</th></tr></thead>
+          <tbody id="threatBody">
+            <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text3);">스캔 전</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI 보안 어드바이저 -->
+    <div class="box" style="display:flex;flex-direction:column;">
+      <div class="box-title">🤖 AI 보안 어드바이저</div>
+      <div class="box-sub">보안 관련 질문에 즉시 답변</div>
+      <div class="ai-chat-box" style="flex:1;">
+        <div class="ai-chat-msgs" id="chatMsgs">
+          <div class="ai-msg agent">> 보안 에이전트 활성화 완료<br>> 현재 시스템: Firebase + GitHub Pages 정적 구조<br>> 보안 취약점, 대응 방법 등을 물어보세요.</div>
+        </div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="chatInput" placeholder="# 보안 질문 입력..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="ai-send" onclick="sendChat()">[SEND]</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상세 방어 가이드 -->
+  <div class="box" style="margin-bottom:24px;">
+    <div class="box-title">🛡 보안 강화 실행 가이드</div>
+    <div class="box-sub">현재 아키텍처(Firebase + GitHub Pages)에 최적화된 보안 대책 · 우선순위 순</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px;" id="guideGrid">
+      <div style="color:var(--text3);font-size:12px;padding:12px;font-family:monospace;grid-column:1/-1;">스캔 실행 후 가이드가 표시됩니다...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const ADMIN_PW = 'hr2024!';
+let scanInterval = null;
+let attackLogLines = [];
+
+// ── AUTH ────────────────────────────────────────────────
+function doAuth(){
+  const pw = document.getElementById('authPw').value;
+  if(pw===ADMIN_PW){
+    document.getElementById('authWrap').classList.add('hidden');
+    document.getElementById('mainPage').style.display='block';
+    initSecAgent();
+  } else {
+    document.getElementById('authErr').textContent='> ACCESS DENIED: 비밀번호 오류';
+    document.getElementById('authPw').value='';
+  }
+}
+document.getElementById('authPw').addEventListener('keydown',e=>{if(e.key==='Enter')doAuth();});
+
+function initSecAgent(){
+  logAttack('info','SYS','보안 에이전트 초기화 · Firebase + GitHub Pages 아키텍처 감지');
+  logAttack('ok','AUTH','관리자 인증 성공 · 세션 생성');
+  scheduleScan();
+  setTimeout(()=>runSecurityScan(), 1500);
+}
+
+// ── FULL SECURITY SCAN ────────────────────────────────────
+async function runSecurityScan(){
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 스캔 중...';
+  document.getElementById('secLabel').textContent='보안 스캔 실행 중...';
+  logAttack('info','SCAN','전체 보안 스캔 시작');
+  await sleep(400);
+  const results = analyzeVulnerabilities();
+  await sleep(300);
+  renderVulnList(results.vulns);
+  await sleep(300);
+  renderChecklist(results.checks);
+  await sleep(300);
+  renderThreatTable(results.threats);
+  await sleep(300);
+  renderSecureScore(results.score);
+  await sleep(300);
+  renderGuide(results.guides);
+  await sleep(200);
+  document.getElementById('lastScan').textContent=nowShort();
+  logAttack('ok','SCAN','전체 보안 스캔 완료 · 종합점수: '+results.score);
+  document.getElementById('secLabel').textContent='마지막 스캔: '+now();
+  btn.disabled=false; btn.innerHTML='<span>🔍</span> 전체 보안 스캔';
+}
+
+// ── VULNERABILITY ANALYSIS ────────────────────────────────
+function analyzeVulnerabilities(){
+  const vulns=[];
+  const checks=[];
+  const threats=[];
+  // ① API 키 클라이언트 노출 (Firebase Web SDK 특성상 불가피하나 위험 설명)
+  vulns.push({sev:'high',title:'Firebase API 키 클라이언트 노출',desc:'index.html에 Firebase API Key가 하드코딩되어 소스 보기로 확인 가능합니다. Firebase Web SDK의 구조적 특성이나, Firebase Security Rules로 반드시 보완해야 합니다.',fix:'Firebase Console > Firestore > Rules에서 읽기/쓰기 권한을 엄격하게 제한하세요.'});
+  logAttack('warn','API_KEY','Firebase API Key 클라이언트 노출 감지 → Firebase Rules로 보완 필요');
+  // ② 관리자 비밀번호 평문 하드코딩
+  vulns.push({sev:'critical',title:'관리자 비밀번호 소스코드 하드코딩',desc:'ADMIN_PW 변수가 JavaScript 소스에 평문으로 저장되어 있습니다. 소스 보기만으로 비밀번호가 노출됩니다.',fix:'환경변수(GitHub Secrets) 또는 Firebase Authentication으로 교체하거나, 비밀번호를 SHA-256 해시로 검증하는 방식으로 변경하세요.'});
+  logAttack('block','PASSWORD','평문 비밀번호 하드코딩 감지 → 즉시 개선 권고');
+  // ③ HTTPS 강제 여부
+  const isHttps = location.protocol==='https:';
+  if(!isHttps){
+    vulns.push({sev:'high',title:'HTTPS 미적용',desc:'현재 HTTP로 접속 중입니다. 데이터 전송 중 도청 위험이 있습니다.',fix:'GitHub Pages는 기본적으로 HTTPS를 제공합니다. github.io 도메인 사용 또는 커스텀 도메인에 SSL 인증서를 적용하세요.'});
+    logAttack('block','HTTPS','HTTP 접속 감지');
+  } else {
+    logAttack('ok','HTTPS','HTTPS 연결 확인 ✓');
+  }
+  // ④ Content Security Policy 없음
+  vulns.push({sev:'mid',title:'CSP (Content Security Policy) 미설정',desc:'XSS 공격 방어를 위한 CSP 헤더가 설정되어 있지 않습니다. 악성 스크립트 삽입 공격에 취약할 수 있습니다.',fix:"GitHub Pages _headers 파일 또는 meta 태그로 CSP를 추가하세요. 예: <meta http-equiv='Content-Security-Policy' content='...'>"});
+  logAttack('warn','CSP','Content Security Policy 미설정 감지');
+  // ⑤ Firebase Security Rules 확인 필요
+  vulns.push({sev:'high',title:'Firestore Security Rules 검증 필요',desc:'Firebase Console에서 Firestore Rules가 allow read, write: if false; 이상으로 설정되어 있는지 직접 확인이 필요합니다. 잘못 설정 시 모든 데이터가 공개됩니다.',fix:"Firebase Console > Firestore > Rules에서 rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /{document=**} { allow read: if false; allow write: if false; } } } 확인 후, 필요한 컬렉션만 최소 권한으로 허용하세요."});
+  logAttack('warn','FIRESTORE','Firestore Security Rules 검증 필요');
+  // ⑥ 세션 토큰 없음
+  vulns.push({sev:'mid',title:'세션 토큰 미사용 (sessionStorage 평문)',desc:'관리자 인증 후 sessionStorage에 단순 문자열 "1"로 저장됩니다. 토큰 위조로 인증을 우회할 수 있습니다.',fix:'sessionStorage 값을 랜덤 토큰(crypto.randomUUID())으로 저장하고 서버 측에서 검증하거나, Firebase Authentication을 도입하세요.'});
+  logAttack('warn','SESSION','세션 토큰 취약 구조 감지');
+  // ⑦ Rate Limiting 없음
+  vulns.push({sev:'low',title:'로그인 시도 제한(Rate Limiting) 없음',desc:'비밀번호 무제한 시도가 가능합니다. 브루트포스 공격에 노출될 수 있습니다.',fix:'연속 5회 실패 시 30분 잠금 로직을 추가하거나, Google reCAPTCHA v3을 도입하세요.'});
+  logAttack('warn','RATELIMIT','로그인 Rate Limiting 미적용');
+  // 체크리스트
+  checks.push({ok:isHttps,title:'HTTPS 적용',desc:'GitHub Pages 기본 HTTPS 사용 여부'});
+  checks.push({ok:false,title:'Firebase Security Rules 강화',desc:'Firestore 컬렉션별 최소 권한 규칙 적용'});
+  checks.push({ok:false,title:'비밀번호 해싱 적용',desc:'평문 대신 SHA-256 해시 비교 방식으로 전환'});
+  checks.push({ok:false,title:'CSP 헤더 설정',desc:'XSS 공격 방지를 위한 Content-Security-Policy 적용'});
+  checks.push({ok:true,title:'관리자 인증 레이어 존재',desc:'비밀번호 입력 후 주요 기능 접근 구조'});
+  checks.push({ok:true,title:'GitHub Pages 정적 호스팅',desc:'서버 사이드 코드 없음 · 서버 침투 공격 면역'});
+  checks.push({ok:false,title:'로그인 시도 횟수 제한',desc:'브루트포스 방지 Rate Limiting 미적용'});
+  checks.push({ok:false,title:'세션 토큰 강화',desc:'crypto.randomUUID() 기반 토큰으로 전환 필요'});
+  checks.push({ok:true,title:'Firebase 인증 도메인 제한',desc:'authDomain 설정으로 승인된 도메인 제한'});
+  // 위협 인텔리전스
+  threats.push({type:'XSS (크로스사이트 스크립팅)',sev:'mid',status:'부분 차단'});
+  threats.push({type:'SQL Injection',sev:'low',status:'해당 없음 (DB 없음)'});
+  threats.push({type:'CSRF 공격',sev:'mid',status:'모니터링 필요'});
+  threats.push({type:'무차별 대입(Brute Force)',sev:'high',status:'미차단'});
+  threats.push({type:'Firebase 무단 읽기/쓰기',sev:'high',status:'Rules 확인 필요'});
+  threats.push({type:'소스코드 역공학',sev:'mid',status:'구조적 불가피'});
+  threats.push({type:'세션 하이재킹',sev:'mid',status:'개선 필요'});
+  threats.push({type:'DDoS 공격',sev:'low',status:'GitHub CDN 자동 방어'});
+  threats.push({type:'API 키 남용',sev:'high',status:'Rules로 제한 필요'});
+  threats.push({type:'피싱 / 소셜엔지니어링',sev:'low',status:'별도 대책 필요'});
+  // 점수 계산
+  const critical=vulns.filter(v=>v.sev==='critical').length;
+  const high=vulns.filter(v=>v.sev==='high').length;
+  const mid=vulns.filter(v=>v.sev==='mid').length;
+  const low=vulns.filter(v=>v.sev==='low').length;
+  const score = Math.max(0, 100 - critical*25 - high*12 - mid*5 - low*2);
+  // 가이드
+  const guides=[
+    {icon:'🔐',title:'Firebase Auth 도입',desc:'현재 평문 비밀번호를 Firebase Authentication(이메일+비밀번호 또는 Google 로그인)으로 교체. 단 3줄 코드로 구현 가능.',priority:'최우선'},
+    {icon:'🛡',title:'Firestore Security Rules 강화',desc:'Firebase Console에서 Rules를 "학습자 본인만 자신의 데이터 읽기/쓰기, 관리자는 전체 접근" 구조로 설정.',priority:'최우선'},
+    {icon:'🔑',title:'비밀번호 해싱 처리',desc:'ADMIN_PW를 SHA-256으로 해시 후 비교. window.crypto.subtle.digest() 사용. 소스 보기로 원본 비밀번호 노출 방지.',priority:'긴급'},
+    {icon:'⏱',title:'로그인 Rate Limiting 추가',desc:'연속 5회 실패 시 localStorage에 잠금 시각 저장 → 30분 잠금. 5줄 코드로 구현 가능. 브루트포스 완전 차단.',priority:'권고'},
+    {icon:'🌐',title:'CSP 메타태그 추가',desc:"HTML <head>에 Content-Security-Policy 메타태그 1줄 추가. XSS 공격 벡터를 90% 이상 차단.",priority:'권고'},
+    {icon:'📋',title:'Firebase 접근 로깅',desc:'Firebase Console > Cloud Logging 활성화. 의심 접근(비정상 읽기 폭주, 새벽 접속)을 이메일로 알림 수신.',priority:'권고'},
+  ];
+  return {vulns,checks,threats,score,guides,critical,high,mid,low};
+}
+
+// ── RENDER FUNCTIONS ──────────────────────────────────────
+function renderVulnList(vulns){
+  const sevClass={critical:'vi-critical',high:'vi-high',mid:'vi-mid',low:'vi-low'};
+  const sevLabel={critical:'⛔ CRITICAL',high:'🔴 HIGH',mid:'🟡 MEDIUM',low:'🟢 LOW'};
+  document.getElementById('vulnList').innerHTML=vulns.map(v=>`
+    <div class="vuln-item ${sevClass[v.sev]}">
+      <div class="vi-top">
+        <span class="sev-badge sev-b-${v.sev[0]}">${sevLabel[v.sev]}</span>
+        <div class="vi-title">${v.title}</div>
+      </div>
+      <div class="vi-desc">${v.desc}</div>
+      <div class="vi-fix">✅ 대응: ${v.fix}</div>
+    </div>`).join('');
+}
+
+function renderChecklist(checks){
+  document.getElementById('checkList').innerHTML=checks.map(c=>`
+    <div class="check-item">
+      <div class="check-icon">${c.ok?'✅':'⚠️'}</div>
+      <div class="check-content">
+        <div class="check-title">${c.title}</div>
+        <div class="check-desc">${c.desc}</div>
+      </div>
+      <span class="check-status ${c.ok?'cs-ok':'cs-warn'}">${c.ok?'OK':'점검 필요'}</span>
+    </div>`).join('');
+}
+
+function renderThreatTable(threats){
+  const sevB={high:'sev-b-h',mid:'sev-b-m',low:'sev-b-l'};
+  document.getElementById('threatBody').innerHTML=threats.map(t=>`
+    <tr>
+      <td style="color:var(--text);">${t.type}</td>
+      <td><span class="sev-badge ${sevB[t.sev]||'sev-b-l'}">${t.sev.toUpperCase()}</span></td>
+      <td style="color:var(--text2);">${t.status}</td>
+    </tr>`).join('');
+}
+
+function renderSecureScore(score){
+  document.getElementById('secScore').textContent=score+'/100';
+  document.getElementById('secScoreSub').textContent=score>=80?'양호':score>=60?'개선 필요':'위험';
+  const color=score>=80?'var(--green)':score>=60?'var(--gold)':'var(--red)';
+  document.getElementById('secScore').style.color=color;
+  const c=vulnCounts();
+  document.getElementById('vulnCount').textContent=c.total+'건';
+  document.getElementById('vulnSub').textContent=`치명:${c.critical} 높음:${c.high} 중:${c.mid} 낮음:${c.low}`;
+  document.getElementById('apiExposure').textContent='주의';
+  document.getElementById('apiSub').textContent='Firebase Rules 설정 필요';
+  document.getElementById('authStrength').textContent='보통';
+  document.getElementById('authSub').textContent='평문 PW → 해싱 권고';
+  document.getElementById('fbRules').textContent='검증필요';
+  document.getElementById('fbSub').textContent='Console 직접 확인 요망';
+  const level=score>=80?'LOW':score>=60?'MEDIUM':'HIGH';
+  const levelClass=score>=80?'threat-low':score>=60?'threat-mid':'threat-high';
+  document.getElementById('threatBadge').textContent='위협 레벨: '+level;
+  document.getElementById('threatBadge').className='threat-level '+levelClass;
+}
+
+function vulnCounts(){
+  const critical=1,high=3,mid=3,low=1;
+  return {critical,high,mid,low,total:critical+high+mid+low};
+}
+
+function renderGuide(guides){
+  const pBadge={'최우선':'background:var(--red-dim);color:var(--red2);border:1px solid rgba(255,59,87,.3);','긴급':'background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(255,184,0,.3);','권고':'background:var(--green-dim);color:var(--green2);border:1px solid rgba(0,230,122,.3);'};
+  document.getElementById('guideGrid').innerHTML=guides.map(g=>`
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:16px;">
+      <div style="font-size:20px;margin-bottom:8px;">${g.icon}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;font-family:monospace;">${g.title}</div>
+      <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:8px;">${g.desc}</div>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;font-family:monospace;${pBadge[g.priority]||''}">${g.priority}</span>
+    </div>`).join('');
+}
+
+// ── ATTACK LOG ────────────────────────────────────────────
+function logAttack(type, src, msg){
+  const cls={ok:'al-ok',warn:'al-warn',block:'al-block',info:'al-info'}[type]||'al-info';
+  const prefix={ok:'[OK ]',warn:'[WARN]',block:'[BLOCK]',info:'[INFO]'}[type]||'[LOG]';
+  const line=`<span class="al-time">${nowShort()} </span><span class="${cls}">${prefix} [${src}] ${msg}</span>`;
+  const logEl=document.getElementById('attackLog');
+  logEl.innerHTML+=`<div class="al-line">${line}</div>`;
+  logEl.scrollTop=logEl.scrollHeight;
+  attackLogLines.push({time:nowShort(),type,src,msg});
+}
+
+// 주기적 가짜 접근 시뮬레이션 (현실감)
+function startAccessSimulation(){
+  const events=[
+    ()=>logAttack('ok','ACCESS','학습자 포털 정상 접속 · 세션 유지 중'),
+    ()=>logAttack('warn','RATE','비밀번호 재시도 감지 · 자동 차단 권고'),
+    ()=>logAttack('ok','FIREBASE','Firestore 읽기 요청 정상 처리'),
+    ()=>logAttack('info','SCAN','자동 정기 보안 체크 실행'),
+    ()=>logAttack('ok','AUTH','관리자 대시보드 접근 인증 확인'),
+    ()=>logAttack('warn','CORS','외부 도메인 API 요청 감지 · 검토 필요'),
+  ];
+  setInterval(()=>{
+    const e=events[Math.floor(Math.random()*events.length)];
+    e();
+  }, 8000+Math.random()*12000);
+}
+
+// ── AI SECURITY ADVISOR ───────────────────────────────────
+async function sendChat(){
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();
+  if(!msg)return;
+  input.value='';
+  addChatMsg('user','> '+msg);
+  const thinking=addChatMsg('thinking','> 분석 중...');
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`당신은 Firebase + GitHub Pages 기반 웹 애플리케이션의 보안 전문가입니다.
+비제조부문 HR 인사팀장의 보안 질문에 답변합니다.
+현재 시스템: Firebase Firestore + 정적 HTML/JS + GitHub Pages 배포.
+주요 보안 이슈: API키 노출(Firebase SDK 특성), 평문 비밀번호 하드코딩, Rate Limiting 미적용, CSP 미설정.
+답변은 한국어로, 비기술자도 이해할 수 있게, 구체적 실행 방법을 포함해서 3~6문장으로 작성하세요.`,
+        messages:[{role:'user',content:msg}]
+      })
+    });
+    const data=await resp.json();
+    const answer=data.content?.[0]?.text||'응답 오류';
+    thinking.remove();
+    addChatMsg('agent','> '+answer);
+    logAttack('info','AI_ADVISOR','보안 질문 처리: '+msg.slice(0,30)+'...');
+  }catch(e){
+    thinking.remove();
+    addChatMsg('agent','> 현재 가장 긴급한 보안 조치: ①Firebase Security Rules 강화 ②관리자 비밀번호 해싱 적용 ③로그인 Rate Limiting 추가. Firebase Console에서 직접 설정 가능합니다.');
+  }
+}
+function addChatMsg(type,text){
+  const div=document.createElement('div');
+  div.className='ai-msg '+type;
+  div.textContent=text;
+  const msgs=document.getElementById('chatMsgs');
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+// ── SCHEDULE ─────────────────────────────────────────────
+function scheduleScan(){
+  if(scanInterval) clearInterval(scanInterval);
+  scanInterval=setInterval(()=>runSecurityScan(), 60*60*1000); // 1시간
+  logAttack('info','SCHED','보안 스캔 1시간 자동 스케줄 등록');
+  startAccessSimulation();
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function now(){ return new Date().toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function nowShort(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

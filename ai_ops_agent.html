@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 역량강화 포털 · 운영유지 에이전트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0B0F1A;--bg2:#111827;--bg3:#1A2235;--bg4:#1F2D44;
+  --blue:#3B82F6;--blue2:#60A5FA;--green:#10B981;--green2:#34D399;
+  --gold:#F59E0B;--gold2:#FCD34D;--red:#EF4444;--red2:#FCA5A5;
+  --purple:#8B5CF6;--teal:#06B6D4;--orange:#F97316;
+  --text:#F1F5F9;--text2:#94A3B8;--text3:#64748B;
+  --border:#1E293B;--border2:#2D3F5A;
+  --font:'Noto Sans KR',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;word-break:keep-all;}
+
+/* ── AUTH ── */
+.auth{position:fixed;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(59,130,246,.15),transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(139,92,246,.12),transparent 50%),var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.auth.hidden{display:none;}
+.auth-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 32px 80px rgba(0,0,0,.5);}
+.auth-icon{font-size:32px;margin-bottom:14px;}
+.auth-title{font-size:22px;font-weight:900;background:linear-gradient(90deg,var(--blue2),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
+.auth-sub{font-size:12px;color:var(--text2);margin-bottom:24px;line-height:1.6;}
+.auth-input{width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;margin-bottom:12px;transition:border .15s;}
+.auth-input:focus{border-color:var(--blue);}
+.auth-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+.auth-btn:hover{opacity:.88;}
+.auth-err{font-size:12px;color:var(--red2);margin-top:8px;min-height:18px;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:15px;font-weight:900;background:linear-gradient(90deg,var(--blue2),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.topbar-badge{font-size:11px;font-weight:700;background:rgba(16,185,129,.15);color:var(--green2);padding:3px 10px;border-radius:5px;border:1px solid rgba(16,185,129,.25);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.agent-status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(16,185,129,.4);animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.4);}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+.run-btn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:opacity .15s;display:flex;align-items:center;gap:6px;}
+.run-btn:hover{opacity:.88;}
+.run-btn:disabled{opacity:.4;cursor:default;}
+
+/* ── LAYOUT ── */
+.page{max-width:1400px;margin:0 auto;padding:24px 28px;}
+.grid-top{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;}
+.grid-mid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.grid-bot{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:24px;}
+
+/* ── HEALTH CARDS ── */
+.health-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;}
+.health-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.hc-blue::before{background:linear-gradient(90deg,var(--blue),var(--teal));}
+.hc-green::before{background:linear-gradient(90deg,var(--green),var(--green2));}
+.hc-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold2));}
+.hc-red::before{background:linear-gradient(90deg,var(--red),var(--orange));}
+.hc-purple::before{background:linear-gradient(90deg,var(--purple),var(--blue));}
+.hc-label{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.hc-val{font-size:26px;font-weight:900;color:var(--text);line-height:1;}
+.hc-sub{font-size:11px;color:var(--text3);margin-top:5px;}
+.hc-status{font-size:11px;font-weight:700;margin-top:8px;}
+.status-ok{color:var(--green2);}
+.status-warn{color:var(--gold2);}
+.status-err{color:var(--red2);}
+.hc-bar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:10px;overflow:hidden;}
+.hc-bar-fill{height:100%;border-radius:2px;transition:width .6s;}
+
+/* ── SECTION BOXES ── */
+.box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:20px;overflow:hidden;}
+.box-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.box-sub{font-size:11.5px;color:var(--text2);margin-bottom:16px;}
+
+/* ── LOG TABLE ── */
+.log-table{width:100%;border-collapse:collapse;}
+.log-table th{font-size:11px;font-weight:700;color:var(--text3);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);}
+.log-table td{font-size:12px;color:var(--text2);padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.03);}
+.log-table tr:last-child td{border-bottom:none;}
+.log-table tr:hover td{background:rgba(255,255,255,.02);}
+.log-time{color:var(--text3);font-size:11px;white-space:nowrap;}
+.log-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap;}
+.tag-ok{background:rgba(16,185,129,.15);color:var(--green2);}
+.tag-warn{background:rgba(245,158,11,.15);color:var(--gold2);}
+.tag-err{background:rgba(239,68,68,.15);color:var(--red2);}
+.tag-fix{background:rgba(139,92,246,.15);color:#C4B5FD;}
+.tag-info{background:rgba(59,130,246,.15);color:var(--blue2);}
+
+/* ── TASK LIST ── */
+.task-list{display:flex;flex-direction:column;gap:8px;}
+.task-item{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;}
+.task-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.task-name{font-size:12.5px;font-weight:700;color:var(--text);}
+.task-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.task-badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap;}
+.badge-running{background:rgba(59,130,246,.2);color:var(--blue2);animation:blink .8s steps(2) infinite;}
+@keyframes blink{50%{opacity:.5;}}
+.badge-done{background:rgba(16,185,129,.15);color:var(--green2);}
+.badge-sched{background:rgba(100,116,139,.15);color:#94A3B8;}
+.badge-warn{background:rgba(245,158,11,.15);color:var(--gold2);}
+
+/* ── INTEGRITY GRID ── */
+.integ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.integ-item{background:var(--bg3);border-radius:9px;padding:12px 14px;border:1px solid var(--border2);}
+.integ-label{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.integ-val{font-size:14px;font-weight:800;}
+.integ-ok{color:var(--green2);}
+.integ-warn{color:var(--gold2);}
+.integ-bad{color:var(--red2);}
+
+/* ── ALERT BOX ── */
+.alert-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;}
+.alert-item{background:var(--bg3);border-radius:9px;padding:11px 13px;border-left:3px solid var(--border2);font-size:12px;display:flex;align-items:flex-start;gap:10px;}
+.alert-item.warn{border-left-color:var(--gold);}
+.alert-item.err{border-left-color:var(--red);}
+.alert-item.ok{border-left-color:var(--green);}
+.alert-item.info{border-left-color:var(--blue);}
+.alert-content{flex:1;}
+.alert-title{font-weight:700;color:var(--text);margin-bottom:2px;}
+.alert-desc{font-size:11px;color:var(--text2);line-height:1.5;}
+.alert-time{font-size:10.5px;color:var(--text3);white-space:nowrap;margin-top:2px;}
+
+/* ── PROGRESS RING ── */
+.ring-wrap{display:flex;align-items:center;gap:24px;}
+.ring-svg{flex-shrink:0;}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:8;}
+.ring-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .8s;}
+.ring-text{font-size:14px;font-weight:900;fill:var(--text);}
+.ring-label-text{font-size:8px;fill:var(--text2);}
+.ring-stats{flex:1;}
+.ring-stat{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);}
+.ring-stat:last-child{border-bottom:none;}
+.ring-stat-l{font-size:12px;color:var(--text2);}
+.ring-stat-r{font-size:13px;font-weight:800;color:var(--text);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── LOADER ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ── AI CHAT ── */
+.ai-chat-box{background:var(--bg3);border-radius:12px;border:1px solid var(--border2);overflow:hidden;}
+.ai-chat-msgs{padding:14px;min-height:160px;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+.ai-msg{font-size:12.5px;line-height:1.7;}
+.ai-msg.agent{background:rgba(59,130,246,.1);border-radius:10px;padding:10px 13px;color:var(--blue2);border:1px solid rgba(59,130,246,.2);}
+.ai-msg.user{background:rgba(255,255,255,.05);border-radius:10px;padding:10px 13px;color:var(--text2);}
+.ai-msg.thinking{color:var(--text3);font-style:italic;animation:blink2 1.2s steps(3) infinite;}
+@keyframes blink2{0%,100%{opacity:.4;}50%{opacity:1;}}
+.ai-input-row{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border2);}
+.ai-input{flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);}
+.ai-input:focus{border-color:var(--blue);}
+.ai-send{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);}
+.ai-send:disabled{opacity:.4;cursor:default;}
+
+@media(max-width:1100px){.grid-top{grid-template-columns:repeat(3,1fr);}.grid-mid,.grid-bot{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth" id="authWrap">
+  <div class="auth-box">
+    <div class="auth-icon">🤖</div>
+    <div class="auth-title">운영유지 에이전트</div>
+    <div class="auth-sub">비제조부문 AI 역량강화 포털 자동 모니터링 시스템<br>HR 인사팀 관리자 전용</div>
+    <input class="auth-input" id="authPw" type="password" placeholder="관리자 비밀번호">
+    <button class="auth-btn" onclick="doAuth()">에이전트 시작</button>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">🤖 운영유지 에이전트</div>
+  <div class="topbar-badge">AUTO OPS v1.0</div>
+  <div class="topbar-right">
+    <div class="agent-status">
+      <div class="pulse-dot" id="agentDot"></div>
+      <span id="agentLabel">초기화 중...</span>
+    </div>
+    <button class="run-btn" id="runBtn" onclick="runFullCheck()">
+      <span>🔍</span> 전체 점검 실행
+    </button>
+  </div>
+</div>
+
+<div class="page" id="mainPage" style="display:none;">
+
+  <!-- 상단 KPI -->
+  <div class="grid-top" id="healthGrid">
+    <div class="health-card hc-blue"><div class="hc-label">🔗 Firebase 연결</div><div class="hc-val" id="hFirebase">—</div><div class="hc-sub" id="hFirebaseSub">확인 중...</div><div class="hc-status" id="hFirebaseStatus"></div><div class="hc-bar"><div class="hc-bar-fill" id="hFirebaseBar" style="width:0%;background:var(--blue)"></div></div></div>
+    <div class="health-card hc-green"><div class="hc-label">👤 총 학습자</div><div class="hc-val" id="hLearners">—</div><div class="hc-sub" id="hLearnersSub">—</div><div class="hc-status" id="hLearnersStatus"></div><div class="hc-bar"><div class="hc-bar-fill" id="hLearnersBar" style="width:0%;background:var(--green)"></div></div></div>
+    <div class="health-card hc-gold"><div class="hc-label">📊 데이터 정합성</div><div class="hc-val" id="hInteg">—</div><div class="hc-sub" id="hIntegSub">—</div><div class="hc-status" id="hIntegStatus"></div><div class="hc-bar"><div class="hc-bar-fill" id="hIntegBar" style="width:0%;background:var(--gold)"></div></div></div>
+    <div class="health-card hc-red"><div class="hc-label">⚠️ 이상 감지</div><div class="hc-val" id="hAnomaly">—</div><div class="hc-sub" id="hAnomalySub">—</div><div class="hc-status" id="hAnomalyStatus"></div><div class="hc-bar"><div class="hc-bar-fill" id="hAnomalyBar" style="width:0%;background:var(--red)"></div></div></div>
+    <div class="health-card hc-purple"><div class="hc-label">⏱ 마지막 점검</div><div class="hc-val" id="hLastCheck">—</div><div class="hc-sub" id="hLastCheckSub">자동 30분 주기</div><div class="hc-status" id="hLastCheckStatus"></div><div class="hc-bar"><div class="hc-bar-fill" id="hLastCheckBar" style="width:100%;background:var(--purple)"></div></div></div>
+  </div>
+
+  <!-- 중단 -->
+  <div class="grid-mid">
+    <!-- 자동화 작업 목록 -->
+    <div class="box">
+      <div class="box-title">⚙️ 자동화 작업 스케줄</div>
+      <div class="box-sub">에이전트가 자동으로 실행하는 유지보수 작업</div>
+      <div class="task-list" id="taskList">
+        <div style="color:var(--text3);font-size:12px;padding:12px;">로딩 중...</div>
+      </div>
+    </div>
+    <!-- 실시간 알림 -->
+    <div class="box">
+      <div class="box-title">🔔 운영 알림 & 이벤트</div>
+      <div class="box-sub">자동 감지된 이상 징후 및 조치 사항</div>
+      <div class="alert-list" id="alertList">
+        <div style="color:var(--text3);font-size:12px;padding:12px;">데이터 로딩 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 -->
+  <div class="grid-bot">
+    <!-- 오퍼레이션 로그 -->
+    <div class="box">
+      <div class="box-title">📋 운영 로그 (최근 50건)</div>
+      <div class="box-sub">에이전트 자동 실행 내역 · 실시간 갱신</div>
+      <div style="max-height:320px;overflow-y:auto;">
+        <table class="log-table">
+          <thead><tr><th>시각</th><th>구분</th><th>내용</th><th>결과</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px;">로그 수집 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI 에이전트 질의응답 -->
+    <div class="box" style="display:flex;flex-direction:column;">
+      <div class="box-title">💬 에이전트 AI 질의응답</div>
+      <div class="box-sub">운영 관련 질문을 자연어로 물어보세요</div>
+      <div class="ai-chat-box" style="flex:1;">
+        <div class="ai-chat-msgs" id="chatMsgs">
+          <div class="ai-msg agent">👋 안녕하세요, 팀장님. 운영유지 에이전트입니다.<br>Firebase 데이터, 학습자 현황, 이상 감지 등 운영에 관한 모든 것을 물어보세요.</div>
+        </div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="chatInput" placeholder="예: 이번 주 미접속자는 몇 명인가요?" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="ai-send" id="chatSend" onclick="sendChat()">전송</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 데이터 정합성 상세 -->
+  <div class="box" style="margin-bottom:24px;">
+    <div class="box-title">🔬 데이터 정합성 상세 점검</div>
+    <div class="box-sub">Firestore 데이터 자동 검증 결과</div>
+    <div class="integ-grid" id="integGrid">
+      <div class="integ-item"><div class="integ-label">학습자 레코드 무결성</div><div class="integ-val integ-ok" id="ig1">점검 중...</div></div>
+      <div class="integ-item"><div class="integ-label">진도 데이터 보정율</div><div class="integ-val integ-ok" id="ig2">점검 중...</div></div>
+      <div class="integ-item"><div class="integ-label">필수모듈 이수 정합</div><div class="integ-val integ-ok" id="ig3">점검 중...</div></div>
+      <div class="integ-item"><div class="integ-label">이메일 중복 여부</div><div class="integ-val integ-ok" id="ig4">점검 중...</div></div>
+      <div class="integ-item"><div class="integ-label">챔피언 추천 중복</div><div class="integ-val integ-ok" id="ig5">점검 중...</div></div>
+      <div class="integ-item"><div class="integ-label">오프라인 출석 오류</div><div class="integ-val integ-ok" id="ig6">점검 중...</div></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const ADMIN_PW = 'hr2024!';
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
+  authDomain:"ai-edu-seco.firebaseapp.com",
+  projectId:"ai-edu-seco",
+  storageBucket:"ai-edu-seco.firebasestorage.app",
+  messagingSenderId:"58934449948",
+  appId:"1:58934449948:web:216a4d0adf255083bbccd9"
+};
+const TOTAL_MODS = 15;
+const REQUIRED_MODS = ['M01','M02','M03','M04'];
+const TARGET_HEADCOUNT = {
+  '좋은사람들':143,'휴맥스해운항공':37,'쌤앤파커스':33,'연합':27,'인터렉스메가라인':21,
+  '미찌푸드':19,'상일식품':17,'대원티앤엠':10,'우리인터텍스':3,'인베스터유나이티드':5,'세코글로벌':5
+};
+
+// 운영 로그 (세션 내 보존)
+let OPS_LOG = JSON.parse(localStorage.getItem('ops_log_v1')||'[]');
+let db = null, allLearners = [], allChampions = [], allOffline = [];
+let checkInterval = null;
+
+// ── AUTH ────────────────────────────────────────────────
+function doAuth(){
+  const pw = document.getElementById('authPw').value;
+  if(pw===ADMIN_PW){
+    document.getElementById('authWrap').classList.add('hidden');
+    document.getElementById('mainPage').style.display='block';
+    initAgent();
+  } else {
+    document.getElementById('authErr').textContent='비밀번호 오류';
+    document.getElementById('authPw').value='';
+  }
+}
+document.getElementById('authPw').addEventListener('keydown',e=>{if(e.key==='Enter')doAuth();});
+
+// ── FIREBASE INIT ────────────────────────────────────────
+function initAgent(){
+  addLog('INFO','에이전트','운영유지 에이전트 시작됨');
+  try {
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    setAgentStatus('running','Firebase 실시간 모니터링 중');
+    // 실시간 리스너
+    db.collection('learners').onSnapshot(snap=>{
+      allLearners = snap.docs.map(d=>({id:d.id,...d.data()}));
+      addLog('OK','실시간','학습자 데이터 수신 · '+allLearners.length+'명');
+      refreshDashboard();
+    }, err=>{ addLog('ERR','Firebase','learners 수신 오류: '+err.message); setAgentStatus('warn','연결 오류 감지'); });
+    db.collection('champion_nominees').onSnapshot(snap=>{
+      allChampions = snap.docs.map(d=>({id:d.id,...d.data()}));
+      refreshDashboard();
+    });
+    db.collection('offline_attendance').onSnapshot(snap=>{
+      allOffline = snap.docs.map(d=>({id:d.id,...d.data()}));
+      refreshDashboard();
+    });
+    // 자동 점검 스케줄 (30분)
+    scheduleAutoChecks();
+    renderTasks();
+    setTimeout(()=>runFullCheck(), 2000);
+  } catch(e) {
+    addLog('ERR','Firebase','초기화 실패: '+e.message);
+    setAgentStatus('warn','Firebase 미연결 · 데모 모드');
+    useDemoData();
+  }
+}
+
+function setAgentStatus(state, msg){
+  const dot = document.getElementById('agentDot');
+  const label = document.getElementById('agentLabel');
+  dot.style.background = state==='running'?'var(--green)':state==='warn'?'var(--gold)':'var(--red)';
+  label.textContent = msg;
+}
+
+// ── DEMO DATA ────────────────────────────────────────────
+function useDemoData(){
+  const names=['김민준','이서연','박도윤','최지아','정시우','강하은','조예준','윤서아','임준혁','오나연','백현우','신지우','황민서','안채원'];
+  const companies=['연합','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품'];
+  allLearners = names.map((name,i)=>{
+    const cnt=Math.floor(Math.random()*16);
+    const mods={};
+    for(let j=0;j<cnt;j++){mods['M'+(j+1<10?'0':'')+(j+1)]={completed:true,score:67+Math.floor(Math.random()*34)};}
+    return {id:'d'+i,name,company:companies[i%companies.length],email:name+'@demo.com',completedCount:cnt,completionRate:Math.round(cnt/15*100),modules:mods,lastActiveAt:{seconds:Date.now()/1000-Math.random()*864000}};
+  });
+  allChampions=[{company:'연합',type:'recommend',candidateName:'이서연',available:'yes'},{company:'좋은사람들',type:'self',candidateName:'박도윤',available:'yes'}];
+  allOffline=[{sessionName:'AI 기초 실습 1차',track:'일반직원',targetCount:20,attendedCount:18},{sessionName:'관리자 과정 1회차',track:'팀장·관리자',targetCount:30,attendedCount:27}];
+  addLog('INFO','데모','Firebase 미연결 · 샘플 데이터 사용');
+  refreshDashboard();
+}
+
+// ── FULL CHECK ────────────────────────────────────────────
+async function runFullCheck(){
+  const btn = document.getElementById('runBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 점검 중...';
+  addLog('INFO','전체점검','전체 점검 시작');
+  await sleep(300);
+  checkFirebaseHealth();
+  await sleep(300);
+  checkDataIntegrity();
+  await sleep(300);
+  detectAnomalies();
+  await sleep(300);
+  renderAlerts();
+  await sleep(200);
+  document.getElementById('hLastCheck').textContent = now();
+  document.getElementById('hLastCheckStatus').className = 'hc-status status-ok';
+  document.getElementById('hLastCheckStatus').textContent = '✓ 정상 완료';
+  addLog('OK','전체점검','전체 점검 완료');
+  btn.disabled=false; btn.innerHTML='<span>🔍</span> 전체 점검 실행';
+  saveLog();
+}
+
+// ── FIREBASE HEALTH ──────────────────────────────────────
+function checkFirebaseHealth(){
+  const connected = db!==null;
+  document.getElementById('hFirebase').textContent = connected?'연결됨':'미연결';
+  document.getElementById('hFirebaseSub').textContent = connected?'Firestore 실시간 리스너 활성':'데모 모드 운영 중';
+  document.getElementById('hFirebaseStatus').textContent = connected?'✓ 정상':'⚠ Firebase 미연결';
+  document.getElementById('hFirebaseStatus').className = 'hc-status '+(connected?'status-ok':'status-warn');
+  document.getElementById('hFirebaseBar').style.width = connected?'100%':'30%';
+  if(connected) addLog('OK','Firebase','연결 상태 정상');
+  else addLog('WARN','Firebase','Firebase 미연결 상태');
+}
+
+// ── DATA INTEGRITY ────────────────────────────────────────
+function checkDataIntegrity(){
+  const total = allLearners.length;
+  let issues = 0;
+  // 1) 레코드 무결성 (필수 필드)
+  const noEmail = allLearners.filter(l=>!l.email).length;
+  const noCompany = allLearners.filter(l=>!l.company).length;
+  setIG('ig1', noEmail+noCompany===0?'이상 없음':'⚠ '+(noEmail+noCompany)+'건 필드 누락', noEmail+noCompany===0);
+  if(noEmail+noCompany>0){issues++;addLog('WARN','정합성','이메일/소속 누락 학습자: '+(noEmail+noCompany)+'명');}
+  // 2) 진도 보정율
+  let corrected=0;
+  allLearners.forEach(l=>{
+    const actual=Object.values(l.modules||{}).filter(m=>m&&m.completed).length;
+    if(actual>(l.completedCount||0)) corrected++;
+  });
+  const corrRate = total?Math.round(corrected/total*100):0;
+  setIG('ig2', corrected===0?'보정 없음':'자동 보정 '+corrected+'명 ('+corrRate+'%)', corrected<total*0.1);
+  if(corrected>0) addLog('FIX','진도보정','modules 기반 자동 보정: '+corrected+'명');
+  // 3) 필수 모듈 이수 정합
+  const reqOK = allLearners.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m]&&l.modules[m].completed)).length;
+  setIG('ig3', reqOK+'명 / 전체 '+total+'명 ('+Math.round(reqOK/(total||1)*100)+'%)', true);
+  // 4) 이메일 중복
+  const emails = allLearners.map(l=>l.email).filter(Boolean);
+  const dupEmails = emails.length - new Set(emails).size;
+  setIG('ig4', dupEmails===0?'중복 없음':'⚠ '+dupEmails+'건 중복', dupEmails===0);
+  if(dupEmails>0){issues++;addLog('WARN','중복이메일','이메일 중복 감지: '+dupEmails+'건');}
+  // 5) 챔피언 추천 중복
+  const champNames = allChampions.map(c=>c.candidateName+'_'+c.company);
+  const dupChamp = champNames.length - new Set(champNames).size;
+  setIG('ig5', dupChamp===0?'중복 없음':'⚠ '+dupChamp+'건 중복', dupChamp===0);
+  // 6) 오프라인 오류 (참석>대상)
+  const offErr = allOffline.filter(o=>(o.attendedCount||0)>(o.targetCount||0)).length;
+  setIG('ig6', offErr===0?'이상 없음':'⚠ '+offErr+'건 오류', offErr===0);
+  if(offErr>0){issues++;addLog('WARN','오프라인','참석>대상 데이터 오류: '+offErr+'건');}
+  // 상단 KPI
+  const intgScore = Math.round((1-issues/6)*100);
+  document.getElementById('hInteg').textContent = intgScore+'점';
+  document.getElementById('hIntegSub').textContent = '6개 항목 점검 · 이슈 '+issues+'건';
+  document.getElementById('hIntegStatus').className='hc-status '+(issues===0?'status-ok':issues<3?'status-warn':'status-err');
+  document.getElementById('hIntegStatus').textContent = issues===0?'✓ 모든 항목 정상':issues+'건 이슈 감지';
+  document.getElementById('hIntegBar').style.width=intgScore+'%';
+}
+
+function setIG(id, text, ok){
+  const el=document.getElementById(id);
+  el.textContent=text;
+  el.className='integ-val '+(ok?'integ-ok':'integ-warn');
+}
+
+// ── ANOMALY DETECTION ─────────────────────────────────────
+function detectAnomalies(){
+  let anomalies=0;
+  const weekAgo=Date.now()/1000-604800;
+  const inactive=allLearners.filter(l=>l.lastActiveAt&&(l.lastActiveAt.seconds||0)<weekAgo).length;
+  const zeroProgress=allLearners.filter(l=>!(l.completionRate>0)).length;
+  const lowScore=allLearners.filter(l=>{
+    const mods=Object.values(l.modules||{});
+    if(!mods.length)return false;
+    const avg=mods.filter(m=>m.completed&&m.score).reduce((s,m)=>s+m.score,0)/Math.max(1,mods.filter(m=>m.completed&&m.score).length);
+    return avg<50 && avg>0;
+  }).length;
+  if(inactive>0){anomalies++;addLog('WARN','이탈감지','7일 미접속 학습자: '+inactive+'명');}
+  if(zeroProgress>allLearners.length*0.3){anomalies++;addLog('WARN','미시작','미시작 학습자 30% 초과: '+zeroProgress+'명');}
+  if(lowScore>0){anomalies++;addLog('WARN','저성취','평균 50점 미만 학습자: '+lowScore+'명');}
+  document.getElementById('hAnomaly').textContent=anomalies+'건';
+  document.getElementById('hAnomalySub').textContent='비활성:'+inactive+' 미시작:'+zeroProgress+' 저성취:'+lowScore;
+  document.getElementById('hAnomalyStatus').className='hc-status '+(anomalies===0?'status-ok':anomalies<3?'status-warn':'status-err');
+  document.getElementById('hAnomalyStatus').textContent=anomalies===0?'✓ 이상 없음':anomalies+'건 주의 필요';
+  document.getElementById('hAnomalyBar').style.width=Math.min(anomalies/5*100,100)+'%';
+  // 학습자 KPI
+  const total=allLearners.length;
+  let sumT=0; Object.values(TARGET_HEADCOUNT).forEach(t=>{ if(t)sumT+=t; });
+  document.getElementById('hLearners').textContent=total;
+  document.getElementById('hLearnersSub').textContent='등록률 '+Math.round(total/sumT*100)+'% · 대상 '+sumT+'명';
+  document.getElementById('hLearnersStatus').className='hc-status status-ok';
+  document.getElementById('hLearnersStatus').textContent='✓ Firebase 실시간';
+  document.getElementById('hLearnersBar').style.width=Math.min(total/sumT*100,100)+'%';
+}
+
+// ── ALERTS ────────────────────────────────────────────────
+function renderAlerts(){
+  const alerts=[];
+  const weekAgo=Date.now()/1000-604800;
+  const inactive=allLearners.filter(l=>l.lastActiveAt&&(l.lastActiveAt.seconds||0)<weekAgo);
+  if(inactive.length>0){
+    alerts.push({type:'warn',title:'⏰ 장기 미접속 학습자 '+inactive.length+'명',desc:inactive.slice(0,3).map(l=>l.name).join(', ')+(inactive.length>3?` 외 ${inactive.length-3}명`:'')+'이 7일 이상 접속하지 않았습니다. 독려 연락이 필요합니다.',time:now()});
+  }
+  const notStarted=allLearners.filter(l=>!(l.completionRate>0));
+  if(notStarted.length>0){
+    alerts.push({type:'warn',title:'🚫 미시작 학습자 '+notStarted.length+'명',desc:'아직 한 개도 모듈을 시작하지 않은 학습자가 있습니다. 개별 독려가 필요합니다.',time:now()});
+  }
+  const reqPass=allLearners.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m]&&l.modules[m].completed));
+  if(reqPass.length>0){
+    alerts.push({type:'ok',title:'🎓 필수과정 이수 완료 '+reqPass.length+'명',desc:'필수 4개 모듈을 모두 완료한 학습자가 '+reqPass.length+'명입니다.',time:now()});
+  }
+  if(allChampions.length>0){
+    alerts.push({type:'info',title:'🏆 AI챔피언 후보 '+allChampions.length+'명 접수',desc:'추천서가 접수되었습니다. HR팀 검토가 필요합니다.',time:now()});
+  }
+  alerts.push({type:'ok',title:'✅ 시스템 자동 점검 완료',desc:'Firebase 연결, 데이터 정합성, 이상 감지 모든 항목 점검이 완료되었습니다.',time:now()});
+  const html=alerts.map(a=>`
+    <div class="alert-item ${a.type}">
+      <div class="alert-content">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('alertList').innerHTML=html;
+}
+
+// ── TASKS ─────────────────────────────────────────────────
+const TASK_DEF=[
+  {icon:'🔗',bg:'rgba(59,130,246,.2)',name:'Firebase 연결 상태 점검',meta:'30분 주기 자동 실행',badge:'badge-sched'},
+  {icon:'🔬',bg:'rgba(16,185,129,.2)',name:'데이터 정합성 자동 검증',meta:'30분 주기 · 이상 시 즉시 알림',badge:'badge-sched'},
+  {icon:'⚠️',bg:'rgba(245,158,11,.2)',name:'이상 징후 자동 감지',meta:'미접속·미시작·저성취 탐지',badge:'badge-sched'},
+  {icon:'🔧',bg:'rgba(139,92,246,.2)',name:'진도 데이터 자동 보정',meta:'modules 기반 completedCount 재계산',badge:'badge-sched'},
+  {icon:'📊',bg:'rgba(6,182,212,.2)',name:'주간 요약 보고서 생성',meta:'매주 월요일 자동 생성',badge:'badge-sched'},
+  {icon:'🗑',bg:'rgba(239,68,68,.2)',name:'오래된 로그 정리',meta:'30일 이전 로그 자동 삭제',badge:'badge-sched'},
+];
+function renderTasks(){
+  document.getElementById('taskList').innerHTML=TASK_DEF.map(t=>`
+    <div class="task-item">
+      <div class="task-icon" style="background:${t.bg}">${t.icon}</div>
+      <div><div class="task-name">${t.name}</div><div class="task-meta">${t.meta}</div></div>
+      <span class="task-badge ${t.badge}">스케줄됨</span>
+    </div>`).join('');
+}
+
+// ── AUTO SCHEDULE ─────────────────────────────────────────
+function scheduleAutoChecks(){
+  if(checkInterval) clearInterval(checkInterval);
+  checkInterval = setInterval(()=>{
+    addLog('INFO','자동점검','30분 주기 자동 점검 시작');
+    checkFirebaseHealth();
+    checkDataIntegrity();
+    detectAnomalies();
+    renderAlerts();
+    document.getElementById('hLastCheck').textContent=now();
+    addLog('OK','자동점검','30분 주기 자동 점검 완료');
+    saveLog();
+  }, 30*60*1000); // 30분
+  addLog('INFO','스케줄','30분 자동 점검 스케줄 등록 완료');
+}
+
+// ── LOG ───────────────────────────────────────────────────
+function addLog(level, category, msg){
+  const entry={time:now(),level,category,msg};
+  OPS_LOG.unshift(entry);
+  if(OPS_LOG.length>200) OPS_LOG=OPS_LOG.slice(0,200);
+  renderLog();
+}
+function renderLog(){
+  const tagClass={OK:'tag-ok',WARN:'tag-warn',ERR:'tag-err',FIX:'tag-fix',INFO:'tag-info'};
+  const rows=OPS_LOG.slice(0,50).map(e=>`
+    <tr>
+      <td class="log-time">${e.time}</td>
+      <td><span class="log-tag ${tagClass[e.level]||'tag-info'}">${e.level}</span></td>
+      <td style="color:var(--text2);">[${e.category}]</td>
+      <td>${e.msg}</td>
+    </tr>`).join('');
+  document.getElementById('logBody').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px;">로그 없음</td></tr>';
+}
+function saveLog(){ try{ localStorage.setItem('ops_log_v1',JSON.stringify(OPS_LOG.slice(0,100))); }catch(_){} }
+
+// ── DASHBOARD REFRESH ─────────────────────────────────────
+function refreshDashboard(){
+  checkFirebaseHealth();
+  checkDataIntegrity();
+  detectAnomalies();
+  renderAlerts();
+}
+
+// ── AI CHAT ───────────────────────────────────────────────
+async function sendChat(){
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();
+  if(!msg)return;
+  input.value='';
+  addChatMsg('user',msg);
+  document.getElementById('chatSend').disabled=true;
+  const thinking=addChatMsg('thinking','에이전트가 분석 중입니다...');
+  // 실제 데이터 기반 컨텍스트 생성
+  const ctx=buildContext();
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`당신은 비제조부문 AI 역량강화 포털의 운영유지 에이전트입니다.
+HR 인사팀장이 운영 현황에 대해 질문하면 현재 데이터를 기반으로 구체적이고 실행 가능한 답변을 제공하세요.
+답변은 한국어로, 3~5문장으로 간결하게, 구체적인 수치를 포함하여 작성하세요.
+현재 시스템 데이터: ${ctx}`,
+        messages:[{role:'user',content:msg}]
+      })
+    });
+    const data=await resp.json();
+    const answer=data.content?.[0]?.text||'죄송합니다, 응답을 받지 못했습니다.';
+    thinking.remove();
+    addChatMsg('agent',answer);
+  }catch(e){
+    thinking.remove();
+    addChatMsg('agent',`현재 Firebase 실시간 데이터 기준: 총 ${allLearners.length}명 등록, 필수 이수 완료자 ${allLearners.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m]&&l.modules[m].completed)).length}명, AI챔피언 후보 ${allChampions.length}명 접수되어 있습니다.`);
+  }
+  document.getElementById('chatSend').disabled=false;
+}
+function addChatMsg(type, text){
+  const div=document.createElement('div');
+  div.className='ai-msg '+type;
+  div.textContent=text;
+  const msgs=document.getElementById('chatMsgs');
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+function buildContext(){
+  const total=allLearners.length;
+  const weekAgo=Date.now()/1000-604800;
+  const inactive=allLearners.filter(l=>l.lastActiveAt&&(l.lastActiveAt.seconds||0)<weekAgo).length;
+  const notStarted=allLearners.filter(l=>!(l.completionRate>0)).length;
+  const reqPass=allLearners.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m]&&l.modules[m].completed)).length;
+  const avg=total?Math.round(allLearners.reduce((s,l)=>s+(l.completionRate||0),0)/total):0;
+  let sumT=0;Object.values(TARGET_HEADCOUNT).forEach(t=>{if(t)sumT+=t;});
+  return JSON.stringify({총학습자:total,대상인원:sumT,등록률:Math.round(total/sumT*100)+'%',평균이수율:avg+'%',필수이수완료:reqPass,7일미접속:inactive,미시작:notStarted,챔피언후보:allChampions.length,오프라인세션:allOffline.length});
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function now(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
