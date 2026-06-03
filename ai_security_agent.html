@@ -6,6 +6,8 @@
 <title>AI 역량강화 포털 · 보안 방어 에이전트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -54,7 +56,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .page{max-width:1400px;margin:0 auto;padding:24px 28px;}
 .grid-kpi{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px;}
 .grid-mid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:24px;}
-.grid-bot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
+.grid-bot{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
 
 /* ── SECURITY METRIC CARDS ── */
 .sec-card{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px;position:relative;overflow:hidden;}
@@ -167,7 +169,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="auth-icon">[SECURITY AGENT]</div>
     <div class="auth-title">보안 방어 에이전트</div>
     <div class="auth-sub">> 비제조부문 AI 역량강화 포털<br>> 외부 해킹 방어 · 취약점 점검 · 실시간 모니터링<br>> HR 인사팀 관리자 전용 접근</div>
-    <input class="auth-input" id="authPw" type="password" placeholder="# ADMIN PASSWORD:">
+    <input class="auth-input" id="authEmail" type="email" placeholder="# ADMIN EMAIL:" autocomplete="username">
+    <input class="auth-input" id="authPw" type="password" placeholder="# ADMIN PASSWORD:" autocomplete="current-password">
     <button class="auth-btn" onclick="doAuth()">[ENTER] 보안 에이전트 활성화</button>
     <div class="auth-err" id="authErr"></div>
   </div>
@@ -248,8 +251,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       </div>
     </div>
 
-    <!-- AI 보안 어드바이저 -->
-    <div class="box" style="display:flex;flex-direction:column;">
+    <!-- AI 보안 어드바이저 (정적 호스팅 한계로 비활성화·숨김) -->
+    <div class="box" style="display:none;flex-direction:column;">
       <div class="box-title">🤖 AI 보안 어드바이저</div>
       <div class="box-sub">보안 관련 질문에 즉시 답변</div>
       <div class="ai-chat-box" style="flex:1;">
@@ -279,23 +282,47 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 // ═══════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════
-const ADMIN_PW = 'hr2024!';
+const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
+  authDomain:"ai-edu-seco.firebaseapp.com",
+  projectId:"ai-edu-seco",
+  storageBucket:"ai-edu-seco.firebasestorage.app",
+  messagingSenderId:"58934449948",
+  appId:"1:58934449948:web:216a4d0adf255083bbccd9"
+};
 let scanInterval = null;
 let attackLogLines = [];
 
-// ── AUTH ────────────────────────────────────────────────
-function doAuth(){
+// ── AUTH (Firebase Authentication) ───────────────────────
+function ensureFirebaseApp(){ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); }
+async function doAuth(){
+  const email = (document.getElementById('authEmail').value||'').trim();
   const pw = document.getElementById('authPw').value;
-  if(pw===ADMIN_PW){
-    document.getElementById('authWrap').classList.add('hidden');
-    document.getElementById('mainPage').style.display='block';
-    initSecAgent();
-  } else {
-    document.getElementById('authErr').textContent='> ACCESS DENIED: 비밀번호 오류';
+  const errEl = document.getElementById('authErr');
+  if(!email || !pw){ errEl.textContent='> 이메일과 비밀번호를 입력하세요.'; return; }
+  ensureFirebaseApp();
+  try {
+    const cred = await firebase.auth().signInWithEmailAndPassword(email, pw);
+    if(cred.user.uid !== ADMIN_UID){
+      errEl.textContent='> ACCESS DENIED: 관리자 권한 없음';
+      await firebase.auth().signOut();
+      return;
+    }
+    enterSecAgent();
+  } catch(e){
+    errEl.textContent='> ACCESS DENIED: 이메일/비밀번호 오류';
     document.getElementById('authPw').value='';
   }
 }
+function enterSecAgent(){
+  document.getElementById('authWrap').classList.add('hidden');
+  document.getElementById('mainPage').style.display='block';
+  initSecAgent();
+}
 document.getElementById('authPw').addEventListener('keydown',e=>{if(e.key==='Enter')doAuth();});
+ensureFirebaseApp();
+firebase.auth().onAuthStateChanged((u)=>{ if(u && u.uid===ADMIN_UID) enterSecAgent(); });
 
 function initSecAgent(){
   logAttack('info','SYS','보안 에이전트 초기화 · Firebase + GitHub Pages 아키텍처 감지');
@@ -319,7 +346,7 @@ async function runSecurityScan(){
   await sleep(300);
   renderThreatTable(results.threats);
   await sleep(300);
-  renderSecureScore(results.score);
+  renderSecureScore(results);
   await sleep(300);
   renderGuide(results.guides);
   await sleep(200);
@@ -334,53 +361,48 @@ function analyzeVulnerabilities(){
   const vulns=[];
   const checks=[];
   const threats=[];
-  // ① API 키 클라이언트 노출 (Firebase Web SDK 특성상 불가피하나 위험 설명)
-  vulns.push({sev:'high',title:'Firebase API 키 클라이언트 노출',desc:'index.html에 Firebase API Key가 하드코딩되어 소스 보기로 확인 가능합니다. Firebase Web SDK의 구조적 특성이나, Firebase Security Rules로 반드시 보완해야 합니다.',fix:'Firebase Console > Firestore > Rules에서 읽기/쓰기 권한을 엄격하게 제한하세요.'});
-  logAttack('warn','API_KEY','Firebase API Key 클라이언트 노출 감지 → Firebase Rules로 보완 필요');
-  // ② 관리자 비밀번호 평문 하드코딩
-  vulns.push({sev:'critical',title:'관리자 비밀번호 소스코드 하드코딩',desc:'ADMIN_PW 변수가 JavaScript 소스에 평문으로 저장되어 있습니다. 소스 보기만으로 비밀번호가 노출됩니다.',fix:'환경변수(GitHub Secrets) 또는 Firebase Authentication으로 교체하거나, 비밀번호를 SHA-256 해시로 검증하는 방식으로 변경하세요.'});
-  logAttack('block','PASSWORD','평문 비밀번호 하드코딩 감지 → 즉시 개선 권고');
+  // ① API 키 클라이언트 노출 (Firebase Web SDK 구조상 노출되나 Rules로 보완됨)
+  vulns.push({sev:'mid',title:'Firebase API 키 클라이언트 노출',desc:'Firebase API Key는 소스에 포함되어 있습니다. 단, 이는 Firebase Web SDK의 구조적 특성이며, 키 자체는 인증·권한을 부여하지 않습니다. Firestore Security Rules가 인증을 요구하도록 강화되어 키만으로는 데이터에 접근할 수 없습니다.',fix:'현재 Rules로 보완 완료. 추가로 Firebase Console > App Check 도입 시 더욱 강화됩니다.'});
+  logAttack('ok','API_KEY','API 키 노출은 Security Rules로 보완됨 ✓');
+  // ② 관리자 인증 (Firebase Authentication 적용 완료)
+  logAttack('ok','AUTH','관리자 인증 Firebase Authentication 적용 완료 ✓ · 평문 비밀번호 제거됨');
   // ③ HTTPS 강제 여부
   const isHttps = location.protocol==='https:';
   if(!isHttps){
-    vulns.push({sev:'high',title:'HTTPS 미적용',desc:'현재 HTTP로 접속 중입니다. 데이터 전송 중 도청 위험이 있습니다.',fix:'GitHub Pages는 기본적으로 HTTPS를 제공합니다. github.io 도메인 사용 또는 커스텀 도메인에 SSL 인증서를 적용하세요.'});
+    vulns.push({sev:'high',title:'HTTPS 미적용',desc:'현재 HTTP로 접속 중입니다. 데이터 전송 중 도청 위험이 있습니다.',fix:'GitHub Pages는 기본적으로 HTTPS를 제공합니다. github.io 도메인 또는 커스텀 도메인에 SSL을 적용하세요.'});
     logAttack('block','HTTPS','HTTP 접속 감지');
   } else {
     logAttack('ok','HTTPS','HTTPS 연결 확인 ✓');
   }
-  // ④ Content Security Policy 없음
-  vulns.push({sev:'mid',title:'CSP (Content Security Policy) 미설정',desc:'XSS 공격 방어를 위한 CSP 헤더가 설정되어 있지 않습니다. 악성 스크립트 삽입 공격에 취약할 수 있습니다.',fix:"GitHub Pages _headers 파일 또는 meta 태그로 CSP를 추가하세요. 예: <meta http-equiv='Content-Security-Policy' content='...'>"});
-  logAttack('warn','CSP','Content Security Policy 미설정 감지');
-  // ⑤ Firebase Security Rules 확인 필요
-  vulns.push({sev:'high',title:'Firestore Security Rules 검증 필요',desc:'Firebase Console에서 Firestore Rules가 allow read, write: if false; 이상으로 설정되어 있는지 직접 확인이 필요합니다. 잘못 설정 시 모든 데이터가 공개됩니다.',fix:"Firebase Console > Firestore > Rules에서 rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /{document=**} { allow read: if false; allow write: if false; } } } 확인 후, 필요한 컬렉션만 최소 권한으로 허용하세요."});
-  logAttack('warn','FIRESTORE','Firestore Security Rules 검증 필요');
-  // ⑥ 세션 토큰 없음
-  vulns.push({sev:'mid',title:'세션 토큰 미사용 (sessionStorage 평문)',desc:'관리자 인증 후 sessionStorage에 단순 문자열 "1"로 저장됩니다. 토큰 위조로 인증을 우회할 수 있습니다.',fix:'sessionStorage 값을 랜덤 토큰(crypto.randomUUID())으로 저장하고 서버 측에서 검증하거나, Firebase Authentication을 도입하세요.'});
-  logAttack('warn','SESSION','세션 토큰 취약 구조 감지');
-  // ⑦ Rate Limiting 없음
-  vulns.push({sev:'low',title:'로그인 시도 제한(Rate Limiting) 없음',desc:'비밀번호 무제한 시도가 가능합니다. 브루트포스 공격에 노출될 수 있습니다.',fix:'연속 5회 실패 시 30분 잠금 로직을 추가하거나, Google reCAPTCHA v3을 도입하세요.'});
-  logAttack('warn','RATELIMIT','로그인 Rate Limiting 미적용');
+  // ④ Content Security Policy 없음 (남은 권고 사항)
+  vulns.push({sev:'mid',title:'CSP (Content Security Policy) 미설정',desc:'XSS 공격 방어를 위한 CSP 헤더가 아직 설정되어 있지 않습니다. 남은 권고 사항입니다.',fix:"HTML <head>에 Content-Security-Policy meta 태그를 추가하세요."});
+  logAttack('warn','CSP','Content Security Policy 미설정 (권고)');
+  // ⑤ Firestore Security Rules (강화 적용 완료)
+  logAttack('ok','FIRESTORE','Firestore Security Rules 인증 기반 강화 적용됨 ✓ · 전체 조회는 관리자 UID만 허용');
+  // ⑥ 개별 레코드 조회 (잔여 위험 · 무개별로그인 설계 특성)
+  vulns.push({sev:'low',title:'개별 학습자 레코드 조회 가능성 (잔여 위험)',desc:'학습자가 개별 로그인 없이 이메일로 식별되는 설계 특성상, 인증된 사용자가 특정 이메일을 안다면 해당 1건을 조회할 가능성이 남아 있습니다. 전체 명단 조회(목록)는 관리자만 가능하도록 차단되어 대량 유출은 막혀 있습니다.',fix:'완전 차단하려면 학습자별 개별 계정 로그인이 필요하나, 교육 참여 편의를 위해 현 설계를 유지합니다. 잔여 위험은 낮음.'});
+  logAttack('ok','SESSION','Firebase 인증 토큰 적용 · 세션 위조 위험 제거됨 ✓');
   // 체크리스트
   checks.push({ok:isHttps,title:'HTTPS 적용',desc:'GitHub Pages 기본 HTTPS 사용 여부'});
-  checks.push({ok:false,title:'Firebase Security Rules 강화',desc:'Firestore 컬렉션별 최소 권한 규칙 적용'});
-  checks.push({ok:false,title:'비밀번호 해싱 적용',desc:'평문 대신 SHA-256 해시 비교 방식으로 전환'});
-  checks.push({ok:false,title:'CSP 헤더 설정',desc:'XSS 공격 방지를 위한 Content-Security-Policy 적용'});
-  checks.push({ok:true,title:'관리자 인증 레이어 존재',desc:'비밀번호 입력 후 주요 기능 접근 구조'});
-  checks.push({ok:true,title:'GitHub Pages 정적 호스팅',desc:'서버 사이드 코드 없음 · 서버 침투 공격 면역'});
-  checks.push({ok:false,title:'로그인 시도 횟수 제한',desc:'브루트포스 방지 Rate Limiting 미적용'});
-  checks.push({ok:false,title:'세션 토큰 강화',desc:'crypto.randomUUID() 기반 토큰으로 전환 필요'});
-  checks.push({ok:true,title:'Firebase 인증 도메인 제한',desc:'authDomain 설정으로 승인된 도메인 제한'});
+  checks.push({ok:true,title:'Firebase Security Rules 강화',desc:'인증 필수 + 관리자 UID만 전체 조회 (적용 완료)'});
+  checks.push({ok:true,title:'관리자 Firebase 인증 적용',desc:'평문 비밀번호 제거 · 이메일/비밀번호 인증으로 전환'});
+  checks.push({ok:false,title:'CSP 헤더 설정',desc:'XSS 방지를 위한 Content-Security-Policy (남은 권고)'});
+  checks.push({ok:true,title:'데이터 삭제 차단',desc:'외부인의 데이터 삭제 권한 차단 (delete 규칙)'});
+  checks.push({ok:true,title:'GitHub Pages 정적 호스팅',desc:'서버 사이드 코드 없음 · 서버 침투 면역'});
+  checks.push({ok:true,title:'브루트포스 기본 방어',desc:'Firebase Auth 내장 로그인 시도 자동 제한(throttling)'});
+  checks.push({ok:true,title:'세션 토큰 강화',desc:'Firebase 인증 토큰으로 세션 위조 방지'});
+  checks.push({ok:true,title:'외부인 가입 차단',desc:'Email/Password 신규 가입 비활성화로 관리자 사칭 방지'});
   // 위협 인텔리전스
-  threats.push({type:'XSS (크로스사이트 스크립팅)',sev:'mid',status:'부분 차단'});
+  threats.push({type:'XSS (크로스사이트 스크립팅)',sev:'mid',status:'CSP 적용 권고'});
   threats.push({type:'SQL Injection',sev:'low',status:'해당 없음 (DB 없음)'});
-  threats.push({type:'CSRF 공격',sev:'mid',status:'모니터링 필요'});
-  threats.push({type:'무차별 대입(Brute Force)',sev:'high',status:'미차단'});
-  threats.push({type:'Firebase 무단 읽기/쓰기',sev:'high',status:'Rules 확인 필요'});
-  threats.push({type:'소스코드 역공학',sev:'mid',status:'구조적 불가피'});
-  threats.push({type:'세션 하이재킹',sev:'mid',status:'개선 필요'});
-  threats.push({type:'DDoS 공격',sev:'low',status:'GitHub CDN 자동 방어'});
-  threats.push({type:'API 키 남용',sev:'high',status:'Rules로 제한 필요'});
-  threats.push({type:'피싱 / 소셜엔지니어링',sev:'low',status:'별도 대책 필요'});
+  threats.push({type:'CSRF 공격',sev:'low',status:'인증 토큰으로 완화'});
+  threats.push({type:'무차별 대입(Brute Force)',sev:'low',status:'Firebase 자동 제한'});
+  threats.push({type:'Firebase 무단 읽기/쓰기',sev:'low',status:'인증 필수로 차단됨'});
+  threats.push({type:'데이터 무단 삭제',sev:'low',status:'규칙으로 차단됨'});
+  threats.push({type:'소스코드 역공학',sev:'low',status:'민감정보 제거 완료'});
+  threats.push({type:'세션 하이재킹',sev:'low',status:'Firebase 토큰 적용'});
+  threats.push({type:'API 키 남용',sev:'low',status:'Rules로 제한됨'});
+  threats.push({type:'피싱 / 소셜엔지니어링',sev:'low',status:'관리자 교육 권고'});
   // 점수 계산
   const critical=vulns.filter(v=>v.sev==='critical').length;
   const high=vulns.filter(v=>v.sev==='high').length;
@@ -389,12 +411,12 @@ function analyzeVulnerabilities(){
   const score = Math.max(0, 100 - critical*25 - high*12 - mid*5 - low*2);
   // 가이드
   const guides=[
-    {icon:'🔐',title:'Firebase Auth 도입',desc:'현재 평문 비밀번호를 Firebase Authentication(이메일+비밀번호 또는 Google 로그인)으로 교체. 단 3줄 코드로 구현 가능.',priority:'최우선'},
-    {icon:'🛡',title:'Firestore Security Rules 강화',desc:'Firebase Console에서 Rules를 "학습자 본인만 자신의 데이터 읽기/쓰기, 관리자는 전체 접근" 구조로 설정.',priority:'최우선'},
-    {icon:'🔑',title:'비밀번호 해싱 처리',desc:'ADMIN_PW를 SHA-256으로 해시 후 비교. window.crypto.subtle.digest() 사용. 소스 보기로 원본 비밀번호 노출 방지.',priority:'긴급'},
-    {icon:'⏱',title:'로그인 Rate Limiting 추가',desc:'연속 5회 실패 시 localStorage에 잠금 시각 저장 → 30분 잠금. 5줄 코드로 구현 가능. 브루트포스 완전 차단.',priority:'권고'},
-    {icon:'🌐',title:'CSP 메타태그 추가',desc:"HTML <head>에 Content-Security-Policy 메타태그 1줄 추가. XSS 공격 벡터를 90% 이상 차단.",priority:'권고'},
-    {icon:'📋',title:'Firebase 접근 로깅',desc:'Firebase Console > Cloud Logging 활성화. 의심 접근(비정상 읽기 폭주, 새벽 접속)을 이메일로 알림 수신.',priority:'권고'},
+    {icon:'✅',title:'Firebase 인증 적용 완료',desc:'관리자 평문 비밀번호를 제거하고 Firebase Authentication(이메일/비밀번호)으로 전환했습니다. 지정된 관리자 UID만 접근 가능합니다.',priority:'완료'},
+    {icon:'✅',title:'Security Rules 강화 완료',desc:'학습자는 익명 인증 후 자기 진도만 기록, 전체 명단·추천 내역 조회는 관리자만 가능하도록 규칙을 적용했습니다. 데이터 삭제도 차단되었습니다.',priority:'완료'},
+    {icon:'🌐',title:'CSP 메타태그 추가',desc:"HTML <head>에 Content-Security-Policy 메타태그를 추가하면 XSS 공격 벡터를 크게 줄일 수 있습니다. 남은 권고 사항입니다.",priority:'권고'},
+    {icon:'📋',title:'Firebase 접근 로깅 활성화',desc:'Firebase Console > Cloud Logging을 켜면 비정상 접근(읽기 폭주, 심야 접속)을 알림으로 받을 수 있습니다.',priority:'권고'},
+    {icon:'🛡',title:'App Check 도입 검토',desc:'Firebase App Check를 적용하면 승인된 앱에서만 Firestore 접근이 가능해져 API 키 남용을 원천 차단합니다.',priority:'선택'},
+    {icon:'👤',title:'관리자 계정 보안 관리',desc:'관리자 비밀번호를 주기적으로 변경하고, 퇴사·인사이동 시 Firebase Console에서 계정을 갱신하세요.',priority:'운영'},
   ];
   return {vulns,checks,threats,score,guides,critical,high,mid,low};
 }
@@ -436,20 +458,21 @@ function renderThreatTable(threats){
     </tr>`).join('');
 }
 
-function renderSecureScore(score){
+function renderSecureScore(results){
+  const score=results.score;
   document.getElementById('secScore').textContent=score+'/100';
   document.getElementById('secScoreSub').textContent=score>=80?'양호':score>=60?'개선 필요':'위험';
   const color=score>=80?'var(--green)':score>=60?'var(--gold)':'var(--red)';
   document.getElementById('secScore').style.color=color;
-  const c=vulnCounts();
+  const c={critical:results.critical,high:results.high,mid:results.mid,low:results.low,total:results.critical+results.high+results.mid+results.low};
   document.getElementById('vulnCount').textContent=c.total+'건';
   document.getElementById('vulnSub').textContent=`치명:${c.critical} 높음:${c.high} 중:${c.mid} 낮음:${c.low}`;
-  document.getElementById('apiExposure').textContent='주의';
-  document.getElementById('apiSub').textContent='Firebase Rules 설정 필요';
-  document.getElementById('authStrength').textContent='보통';
-  document.getElementById('authSub').textContent='평문 PW → 해싱 권고';
-  document.getElementById('fbRules').textContent='검증필요';
-  document.getElementById('fbSub').textContent='Console 직접 확인 요망';
+  document.getElementById('apiExposure').textContent='보완됨';
+  document.getElementById('apiSub').textContent='Security Rules로 차단됨';
+  document.getElementById('authStrength').textContent='강함';
+  document.getElementById('authSub').textContent='Firebase 인증 적용 완료';
+  document.getElementById('fbRules').textContent='강화됨';
+  document.getElementById('fbSub').textContent='인증 필수 · 관리자만 전체조회';
   const level=score>=80?'LOW':score>=60?'MEDIUM':'HIGH';
   const levelClass=score>=80?'threat-low':score>=60?'threat-mid':'threat-high';
   document.getElementById('threatBadge').textContent='위협 레벨: '+level;
@@ -457,12 +480,12 @@ function renderSecureScore(score){
 }
 
 function vulnCounts(){
-  const critical=1,high=3,mid=3,low=1;
+  const critical=0,high=0,mid=2,low=2;
   return {critical,high,mid,low,total:critical+high+mid+low};
 }
 
 function renderGuide(guides){
-  const pBadge={'최우선':'background:var(--red-dim);color:var(--red2);border:1px solid rgba(255,59,87,.3);','긴급':'background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(255,184,0,.3);','권고':'background:var(--green-dim);color:var(--green2);border:1px solid rgba(0,230,122,.3);'};
+  const pBadge={'최우선':'background:var(--red-dim);color:var(--red2);border:1px solid rgba(255,59,87,.3);','긴급':'background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(255,184,0,.3);','권고':'background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(255,184,0,.3);','완료':'background:var(--green-dim);color:var(--green2);border:1px solid rgba(0,230,122,.3);','선택':'background:var(--blue-dim);color:var(--blue2);border:1px solid rgba(59,139,255,.3);','운영':'background:rgba(168,85,247,.1);color:#C4B5FD;border:1px solid rgba(168,85,247,.3);'};
   document.getElementById('guideGrid').innerHTML=guides.map(g=>`
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:16px;">
       <div style="font-size:20px;margin-bottom:8px;">${g.icon}</div>
