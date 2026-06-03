@@ -578,6 +578,10 @@ tr:hover td{background:var(--bg);}
   <div class="mon-section-title">🔔 운영 알림 & 조치 사항</div>
   <div class="mon-alerts" id="monAlerts"></div>
   <div id="nudgeModal"></div>
+  <div class="mon-section-title">📈 운영 추세 (이력 누적) <span id="snapInfo" style="font-size:11px;font-weight:400;color:var(--gray);"></span></div>
+  <div id="trendSummary"></div>
+  <div id="trendChartWrap" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;height:240px;"><canvas id="trendChart"></canvas></div>
+  <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><button class="mon-refresh" onclick="saveSnapshotNow()">📷 오늘 지표 스냅샷 저장</button><span style="font-size:11.5px;color:var(--gray);">대시보드 접속 시 그날 지표가 자동 저장됩니다. 2일치 이상 쌓이면 주간·월간 변화가 표시됩니다.</span></div>
 </div>
 </div>
 
@@ -790,6 +794,82 @@ function copyNudgeTsv(){
   else { window.prompt('아래 내용을 복사(Ctrl+C)해 Google Sheets에 붙여넣으세요:', tsv); }
 }
 function closeNudgeModal(){ const m=document.getElementById('nudgeModal'); if(m) m.innerHTML=''; }
+let opsHistory=[]; let _snapSaved=false;
+function computeOpsSnapshot(){
+  var L=allLearners||[], C=allChampions||[], O=allOffline||[];
+  var total=L.length, sumT=0, regInTarget=0;
+  Object.keys(TARGET_HEADCOUNT).forEach(function(c){ var t=TARGET_HEADCOUNT[c]; if(t!=null){ sumT+=t; regInTarget+=L.filter(function(l){return l.company===c;}).length; }});
+  var regRate=sumT?Math.round(regInTarget/sumT*100):0;
+  var avgCompletion=total?Math.round(L.reduce(function(s,l){return s+(l.completionRate||0);},0)/total):0;
+  var reqDone=L.filter(function(l){return REQUIRED_MODS.every(function(m){return l.modules&&l.modules[m.id]&&l.modules[m.id].completed;});}).length;
+  var reqRate=total?Math.round(reqDone/total*100):0;
+  var weekAgo=Date.now()/1000-604800;
+  var inactive=L.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx<weekAgo;}).length;
+  var notStarted=L.filter(function(l){return !(l.completionRate>0);}).length;
+  var lowScore=L.filter(function(l){var ms=Object.values(l.modules||{}).filter(function(m){return m&&m.completed&&m.score;});if(!ms.length)return false;var avg=ms.reduce(function(a,m){return a+m.score;},0)/ms.length;return avg>0&&avg<50;}).length;
+  var issues=0;
+  if(L.filter(function(l){return !l.email||!l.company;}).length>0) issues++;
+  var emails=L.map(function(l){return l.email;}).filter(Boolean); if(emails.length-new Set(emails).size>0) issues++;
+  if(O.filter(function(o){return (o.attendedCount||0)>(o.targetCount||0);}).length>0) issues++;
+  return {date:new Date().toISOString().slice(0,10), total:total, sumT:sumT, regRate:regRate, avgCompletion:avgCompletion, reqDone:reqDone, reqRate:reqRate, inactive:inactive, notStarted:notStarted, lowScore:lowScore, champions:C.length, integrityIssues:issues};
+}
+function _writeSnapshot(snap){
+  return db.collection('ops_snapshots').doc(snap.date).set(Object.assign({},snap,{ts:firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});
+}
+function saveSnapshotIfNeeded(){
+  if(!db || _snapSaved || !(allLearners&&allLearners.length)) return;
+  _snapSaved=true;
+  _writeSnapshot(computeOpsSnapshot()).then(loadOpsHistory).catch(function(e){console.warn('[snapshot]',e);});
+}
+function saveSnapshotNow(){
+  if(!db){ alert('Firebase 미연결 상태에서는 저장할 수 없습니다.'); return; }
+  var snap=computeOpsSnapshot();
+  _writeSnapshot(snap).then(function(){ loadOpsHistory(); alert('오늘('+snap.date+') 지표 스냅샷을 저장했습니다.'); }).catch(function(e){ alert('저장 실패: '+e.message); });
+}
+function loadOpsHistory(){
+  if(!db) return;
+  db.collection('ops_snapshots').orderBy('date').limit(180).get().then(function(s){ opsHistory=s.docs.map(function(d){return d.data();}); renderTrends(); }).catch(function(e){console.warn('[history]',e);});
+}
+function _snapAt(daysBefore, refDate){
+  var t=new Date(refDate+'T00:00:00'); t.setDate(t.getDate()-daysBefore);
+  var ts=t.toISOString().slice(0,10); var best=null;
+  for(var i=0;i<opsHistory.length;i++){ var x=opsHistory[i]; if(x.date<=ts && x.date!==refDate){ if(!best||x.date>best.date) best=x; } }
+  return best;
+}
+function _delta(cur,prev){ if(prev==null||prev===undefined) return ''; var d=cur-prev; if(d===0) return ' (±0)'; return d>0?(' (▲+'+d+')'):(' (▼'+d+')'); }
+function renderTrends(){
+  var host=document.getElementById('trendSummary'); if(!host) return;
+  var wrap=document.getElementById('trendChartWrap');
+  if(opsHistory.length<2){
+    host.innerHTML='<div style="font-size:12.5px;color:var(--gray);line-height:1.7;padding:8px 0;">📈 추세 데이터를 누적하는 중입니다. 대시보드에 접속할 때마다 그날의 핵심 지표가 자동 저장되며, <b>2일치 이상</b> 쌓이면 주간·월간 변화와 그래프가 여기에 표시됩니다.</div>';
+    if(wrap) wrap.style.display='none';
+    var si0=document.getElementById('snapInfo'); if(si0) si0.textContent='· 누적 '+opsHistory.length+'일';
+    return;
+  }
+  if(wrap) wrap.style.display='block';
+  var cur=opsHistory[opsHistory.length-1];
+  var wk=_snapAt(7,cur.date), mo=_snapAt(30,cur.date);
+  function card(title,base){
+    if(!base) return '<div class="mon-integ"><div class="l">'+title+'</div><div class="v" style="color:var(--gray);font-size:12px;font-weight:400;">비교할 과거 데이터가 아직 부족합니다.</div></div>';
+    return '<div class="mon-integ"><div class="l">'+title+' <span style="font-weight:400;color:var(--gray);">(기준 '+base.date+')</span></div><div class="v" style="font-size:12.5px;line-height:1.9;font-weight:500;color:var(--text2);">'
+      +'등록률 '+cur.regRate+'%'+_delta(cur.regRate,base.regRate)+'<br>'
+      +'평균 이수율 '+cur.avgCompletion+'%'+_delta(cur.avgCompletion,base.avgCompletion)+'<br>'
+      +'필수 이수율 '+cur.reqRate+'%'+_delta(cur.reqRate,base.reqRate)+'<br>'
+      +'7일 미접속 '+cur.inactive+'명'+_delta(cur.inactive,base.inactive)
+      +'</div></div>';
+  }
+  host.innerHTML='<div class="mon-integ-grid" style="grid-template-columns:1fr 1fr;">'+card('🗓 주간 변화',wk)+card('🗓 월간 변화',mo)+'</div>';
+  var si=document.getElementById('snapInfo'); if(si) si.textContent='· 누적 '+opsHistory.length+'일 (최근 '+cur.date+')';
+  var labels=opsHistory.map(function(s){return s.date.slice(5);});
+  function ds(key,label,color){ return {label:label,data:opsHistory.map(function(s){return s[key];}),borderColor:color,backgroundColor:color+'22',tension:.3,pointRadius:2,fill:false}; }
+  try{ if(typeof destroyChart==='function') destroyChart('trendChart'); else if(charts.trendChart){ charts.trendChart.destroy(); } }catch(e){}
+  charts.trendChart=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:labels,datasets:[ds('regRate','등록률','#1660C8'),ds('avgCompletion','평균이수율','#1A9650'),ds('reqRate','필수이수율','#C8880A')]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{y:{max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#E8EAF0'}},x:{grid:{display:false}}}}
+  });
+}
+
 function sendNudgeEmails(){
   const weekAgo=Date.now()/1000-604800;
   _nudgeList=(allLearners||[]).filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo)||!(l.completionRate>0); }).map(l=>({email:l.email,name:l.name||'',rate:(l.completionRate||0)}));
@@ -816,7 +896,7 @@ function switchTab(name) {
   if (name==='overview') { renderOverviewCharts(); }
   if (name==='champion') { renderChampionCharts(); }
   if (name==='report') { populateRptCompany(); renderReportTab(); }
-  if (name==='monitor') { renderMonitor(); }
+  if (name==='monitor') { renderMonitor(); renderTrends(); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -874,6 +954,7 @@ function initDashboard() {
       allOffline = generateDemoOffline();
       onOfflineUpdated();
     });
+    loadOpsHistory();
   } catch(e) {
     console.error(e); activateDemoMode();
   }
@@ -920,6 +1001,7 @@ function onLearnersUpdated() {
   populateCompFilter();
   renderCompletionTable();
   renderMonitor();
+  setTimeout(saveSnapshotIfNeeded, 4000);
   if (document.getElementById('panel-report') && document.getElementById('panel-report').classList.contains('active')) {
     populateRptCompany(); renderReportTab();
   }
