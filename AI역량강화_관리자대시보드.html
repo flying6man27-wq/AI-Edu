@@ -581,7 +581,7 @@ tr:hover td{background:var(--bg);}
   <div class="mon-section-title">📈 운영 추세 (이력 누적) <span id="snapInfo" style="font-size:11px;font-weight:400;color:var(--gray);"></span></div>
   <div id="trendSummary"></div>
   <div id="trendChartWrap" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;height:240px;"><canvas id="trendChart"></canvas></div>
-  <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><button class="mon-refresh" onclick="saveSnapshotNow()">📷 오늘 지표 스냅샷 저장</button><span style="font-size:11.5px;color:var(--gray);">대시보드 접속 시 그날 지표가 자동 저장됩니다. 2일치 이상 쌓이면 주간·월간 변화가 표시됩니다.</span></div>
+  <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><button class="mon-refresh" onclick="saveSnapshotNow()">📷 오늘 지표 스냅샷 저장</button><button class="mon-refresh" style="background:var(--purple);" onclick="showReport('week')">📋 주간 보고서</button><button class="mon-refresh" style="background:var(--purple);" onclick="showReport('month')">📋 월간 보고서</button><span style="font-size:11.5px;color:var(--gray);">대시보드 접속 시 그날 지표가 자동 저장됩니다. 2일치 이상 쌓이면 주간·월간 변화가 표시됩니다.</span></div>
 </div>
 </div>
 
@@ -868,6 +868,89 @@ function renderTrends(){
     data:{labels:labels,datasets:[ds('regRate','등록률','#1660C8'),ds('avgCompletion','평균이수율','#1A9650'),ds('reqRate','필수이수율','#C8880A')]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{y:{max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#E8EAF0'}},x:{grid:{display:false}}}}
   });
+}
+
+function companyStats(){
+  var L=allLearners||[]; var out=[];
+  Object.keys(TARGET_HEADCOUNT).forEach(function(c){
+    var t=TARGET_HEADCOUNT[c]; if(t==null) return;
+    var g=L.filter(function(l){return l.company===c;});
+    var reg=g.length, regRate=t?Math.round(reg/t*100):0;
+    var avg=g.length?Math.round(g.reduce(function(s,l){return s+(l.completionRate||0);},0)/g.length):0;
+    out.push({company:c,target:t,reg:reg,regRate:regRate,avg:avg});
+  });
+  return out;
+}
+function buildNarrative(period){
+  var snap=computeOpsSnapshot();
+  var prev = (period==='month') ? _snapAt(30,snap.date) : _snapAt(7,snap.date);
+  var label = (period==='month') ? '월간' : '주간';
+  var L=[];
+  L.push('[AI 역량강화 포털 '+label+' 운영 보고]');
+  L.push('작성일: '+snap.date);
+  L.push('');
+  L.push('1. 등록 및 학습 현황');
+  L.push(' - 총 등록 학습자는 '+snap.total+'명으로, 참여 대상 '+snap.sumT+'명 대비 등록률은 '+snap.regRate+'%입니다.');
+  L.push(' - 평균 이수율은 '+snap.avgCompletion+'%이며, 필수 4개 과정을 모두 이수한 인원은 '+snap.reqDone+'명('+snap.reqRate+'%)입니다.');
+  L.push('');
+  if(prev){
+    function d(c,p){var x=c-p;return x===0?'전 대비 동일':(x>0?('+'+x+'%p 상승'):(x+'%p 하락'));}
+    var basis=(period==='month')?('전월(기준 '+prev.date+')'):('전주(기준 '+prev.date+')');
+    var inv=snap.inactive-prev.inactive;
+    L.push('2. '+basis+' 대비 변화');
+    L.push(' - 등록률 '+d(snap.regRate,prev.regRate)+', 평균 이수율 '+d(snap.avgCompletion,prev.avgCompletion)+', 필수 이수율 '+d(snap.reqRate,prev.reqRate)+'.');
+    L.push(' - 7일 미접속 인원은 '+(inv>0?'+':'')+inv+'명 변동(현재 '+snap.inactive+'명)입니다.');
+  } else {
+    L.push('2. 추세');
+    L.push(' - 비교할 과거 데이터가 아직 충분치 않아 이번 회차는 현재 시점 기준으로 보고합니다. 이력이 누적되면 전주·전월 대비 변화가 자동 포함됩니다.');
+  }
+  L.push('');
+  L.push('3. 리스크 현황');
+  L.push(' - 7일 이상 미접속 '+snap.inactive+'명, 미시작 '+snap.notStarted+'명, 저성취(평균 50점 미만) '+snap.lowScore+'명.');
+  L.push(' - 데이터 정합성 이슈는 '+snap.integrityIssues+'건입니다.');
+  L.push('');
+  L.push('4. AI챔피언');
+  L.push(' - 후보 '+snap.champions+'명 접수, HR팀 검토 대상입니다.');
+  L.push('');
+  var cs=companyStats().filter(function(x){return x.target>0;});
+  if(cs.length){
+    var byReg=cs.slice().sort(function(a,b){return a.regRate-b.regRate;});
+    var low=byReg.slice(0,2).map(function(x){return x.company+'(등록률 '+x.regRate+'%, 평균이수 '+x.avg+'%)';}).join(', ');
+    var top=byReg[byReg.length-1];
+    L.push('5. 계열사별 특이사항');
+    L.push(' - 등록이 특히 저조한 곳: '+low+'. 우선 독려가 필요합니다.');
+    L.push(' - 상대적으로 양호한 곳: '+top.company+'(등록률 '+top.regRate+'%).');
+    L.push('');
+  }
+  var acts=[];
+  if(snap.notStarted>0) acts.push('미시작 '+snap.notStarted+'명 개별 독려 메일 발송(운영모니터링 발송 기능 활용)');
+  if(snap.inactive>0) acts.push('7일 이상 미접속 '+snap.inactive+'명 재참여 안내');
+  if(snap.champions>0) acts.push('AI챔피언 후보 '+snap.champions+'명 검토 및 선정');
+  if(snap.integrityIssues>0) acts.push('데이터 정합성 이슈 '+snap.integrityIssues+'건 정정');
+  if(!acts.length) acts.push('현재 특이 리스크 없음 — 현 수준 유지 및 우수 이수자 격려');
+  L.push('6. '+((period==='month')?'다음 달':'이번 주')+' 중점 조치');
+  for(var i=0;i<acts.length;i++){ L.push(' '+(i+1)+') '+acts[i]); }
+  L.push('');
+  L.push('※ 본 보고서는 대시보드 실시간 데이터 기준으로 자동 생성되었습니다.');
+  return L.join('\n');
+}
+function showReport(period){
+  var title=((period==='month')?'월간':'주간')+' 운영 보고서';
+  var text=buildNarrative(period);
+  var host=document.getElementById('nudgeModal');
+  host.innerHTML='<div class="nm-overlay" onclick="if(event.target===this)closeNudgeModal()"><div class="nm-card" style="width:min(640px,94vw);">'
+    +'<div class="nm-head"><div class="nm-title">📋 '+title+'</div><button class="nm-close" onclick="closeNudgeModal()">✕</button></div>'
+    +'<div class="nm-body"><textarea id="reportText" readonly style="width:100%;height:46vh;font-size:12.5px;line-height:1.7;border:1px solid var(--border);border-radius:8px;padding:12px;resize:vertical;font-family:inherit;color:var(--text);background:var(--bg);box-sizing:border-box;"></textarea>'
+    +'<button class="nm-bcc" style="margin-top:10px;" onclick="copyReportText()">📋 보고서 전체 복사</button></div></div></div>';
+  document.getElementById('reportText').value=text;
+}
+function copyReportText(){
+  var ta=document.getElementById('reportText'); if(!ta) return;
+  ta.removeAttribute('readonly'); ta.select(); ta.setSelectionRange(0,ta.value.length);
+  var ok=false;
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(function(){alert('보고서를 복사했습니다. 메일·문서에 붙여넣으세요.');}).catch(function(){ try{ok=document.execCommand('copy');}catch(e){} alert(ok?'복사했습니다.':'복사 실패 — 텍스트를 직접 선택(Ctrl+A)해 복사하세요.'); }); }
+  else { try{ok=document.execCommand('copy');}catch(e){} alert(ok?'복사했습니다.':'복사 실패 — 텍스트를 직접 선택(Ctrl+A)해 복사하세요.'); }
+  ta.setAttribute('readonly','readonly');
 }
 
 function sendNudgeEmails(){
