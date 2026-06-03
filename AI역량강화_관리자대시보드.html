@@ -780,17 +780,27 @@ function sendAllBcc(){
   const w=window.open(url,'_blank');
   if(!w){ let c=false; try{navigator.clipboard.writeText(emails.join(', '));c=true;}catch(_){} alert('팝업이 차단된 것 같습니다.'+(c?' 수신자 이메일을 클립보드에 복사했으니 Gmail BCC에 붙여넣으세요.':'')); }
 }
+function copyNudgeTsv(){
+  if(!_nudgeList.length){ alert('대상이 없습니다.'); return; }
+  const lines=[['이름','이메일','이수율'].join('\t')];
+  _nudgeList.forEach(t=>lines.push([(t.name||''),t.email,(t.rate!=null?t.rate:0)].join('\t')));
+  const tsv=lines.join('\n');
+  const done=()=>alert(_nudgeList.length+'명 명단을 복사했습니다.\n\nGoogle Sheets 새 문서의 A1 칸에 붙여넣으면\n이름 / 이메일 / 이수율 3개 열로 채워집니다.\n그다음 안내된 Apps Script로 개인화 일괄발송하세요.');
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(tsv).then(done).catch(()=>{ window.prompt('아래 내용을 복사(Ctrl+C)해 Google Sheets에 붙여넣으세요:', tsv); }); }
+  else { window.prompt('아래 내용을 복사(Ctrl+C)해 Google Sheets에 붙여넣으세요:', tsv); }
+}
 function closeNudgeModal(){ const m=document.getElementById('nudgeModal'); if(m) m.innerHTML=''; }
 function sendNudgeEmails(){
   const weekAgo=Date.now()/1000-604800;
-  _nudgeList=(allLearners||[]).filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo)||!(l.completionRate>0); }).map(l=>({email:l.email,name:l.name||''}));
+  _nudgeList=(allLearners||[]).filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo)||!(l.completionRate>0); }).map(l=>({email:l.email,name:l.name||'',rate:(l.completionRate||0)}));
   if(_nudgeList.length===0){ alert('현재 독려 대상이 없습니다.'); return; }
   const rows=_nudgeList.map((t,i)=>'<div class="nm-row"><div><div class="nm-nm">'+nmEsc(t.name||'(이름없음)')+'</div><div class="nm-em">'+nmEsc(t.email)+'</div></div><button class="nm-open" data-i="'+i+'">✉️ 메일 열기</button></div>').join('');
   const html='<div class="nm-overlay" onclick="if(event.target===this)closeNudgeModal()"><div class="nm-card">'
     +'<div class="nm-head"><div class="nm-title">독려메일 발송 — '+_nudgeList.length+'명</div><button class="nm-close" onclick="closeNudgeModal()">✕</button></div>'
     +'<div class="nm-body">'
     +'<button class="nm-bcc" onclick="sendAllBcc()">⚡ 전체 한 번에 보내기 (BCC · 서로 안 보임)</button>'
-    +'<div class="nm-hint">• <b>개별 발송</b>: 아래에서 한 명씩 \'메일 열기\'를 누르면 받는 분께 <b>본인 이름으로만</b> 도착합니다(서로 안 보임).<br>• <b>전체 한 번에</b>: 위 버튼은 BCC라 한 번에 보내며, 받는 분끼리 서로 보이지 않습니다.</div>'
+    +'<button class="nm-bcc" style="background:var(--teal);margin-top:8px;" onclick="copyNudgeTsv()">📋 메일머지용 명단 복사 (Google Sheets 붙여넣기)</button>'
+    +'<div class="nm-hint">• <b>개별 발송</b>: 아래에서 한 명씩 \'메일 열기\'를 누르면 받는 분께 <b>본인 이름으로만</b> 도착합니다(서로 안 보임).<br>• <b>전체 한 번에</b>: 위 버튼은 BCC라 한 번에 보내며, 받는 분끼리 서로 보이지 않습니다.<br>• <b>메일머지</b>: 명단을 복사해 Google Sheets+Apps Script로 이름까지 개인화한 메일을 전원에게 자동 발송할 수 있습니다.</div>'
     +rows
     +'</div></div></div>';
   const host=document.getElementById('nudgeModal'); host.innerHTML=html;
