@@ -6,6 +6,7 @@
 <title>통합 관리 대시보드 — 비제조부문 AI 역량강화</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -285,6 +286,26 @@ tr:hover td{background:var(--bg);}
   body.print-report .rr-kpis,body.print-report .rr-grid2,body.print-report .rr-hls{break-inside:avoid;}
   @page{size:A4;margin:14mm 12mm;}
 }
+
+/* ── 운영 모니터링 탭 ── */
+.mon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.mon-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+.mon-card .lab{font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px;}
+.mon-card .val{font-size:26px;font-weight:900;line-height:1;color:var(--text);}
+.mon-card .sub{font-size:11px;color:var(--gray);margin-top:6px;}
+.mon-section-title{font-size:15px;font-weight:800;color:var(--text);margin:20px 0 12px;}
+.mon-integ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;}
+.mon-integ{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;}
+.mon-integ .l{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;}
+.mon-integ .v{font-size:14px;font-weight:800;}
+.mon-ok{color:var(--green);}.mon-warn{color:var(--gold);}.mon-bad{color:var(--red);}
+.mon-alerts{display:flex;flex-direction:column;gap:9px;}
+.mon-alert{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;padding:12px 14px;}
+.mon-alert.warn{border-left-color:var(--gold);}.mon-alert.err{border-left-color:var(--red);}.mon-alert.ok{border-left-color:var(--green);}.mon-alert.info{border-left-color:var(--blue);}
+.mon-alert .t{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.mon-alert .d{font-size:12px;color:var(--text2);line-height:1.5;}
+.mon-refresh{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;}
+@media(max-width:900px){.mon-grid{grid-template-columns:repeat(2,1fr);}.mon-integ-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -295,7 +316,8 @@ tr:hover td{background:var(--bg);}
     <div class="auth-icon">🔐</div>
     <div class="auth-title">관리자 로그인</div>
     <div class="auth-sub">비제조부문 HR 인사팀 전용 통합 대시보드</div>
-    <input class="auth-input" id="authPw" type="password" placeholder="관리자 비밀번호 입력" onkeydown="if(event.key==='Enter')checkAuth()">
+    <input class="auth-input" id="authEmail" type="email" placeholder="관리자 이메일" autocomplete="username" style="margin-bottom:12px;">
+    <input class="auth-input" id="authPw" type="password" placeholder="관리자 비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAuth()">
     <button class="auth-btn" onclick="checkAuth()">로그인</button>
     <div class="auth-err" id="authErr"></div>
     <div class="auth-note">※ 비밀번호는 HR 인사팀 관리자에게 문의하세요</div>
@@ -323,6 +345,7 @@ tr:hover td{background:var(--bg);}
   <button class="tab-btn" onclick="switchTab('offline')" id="tab-offline">🏢 오프라인교육 <span class="tab-count" id="cnt-offline">—</span></button>
   <button class="tab-btn" onclick="switchTab('champion')" id="tab-champion">🏆 AI챔피언 <span class="tab-count" id="cnt-champion">—</span></button>
   <button class="tab-btn" onclick="switchTab('completion')" id="tab-completion">📋 수료관리 <span class="tab-count" id="cnt-completion">—</span></button>
+  <button class="tab-btn" onclick="switchTab('monitor')" id="tab-monitor">🩺 운영모니터링 <span class="tab-count" id="cnt-monitor">—</span></button>
   <button class="tab-btn" onclick="switchTab('report')" id="tab-report">📑 주간보고서</button>
 </div>
 
@@ -521,6 +544,27 @@ tr:hover td{background:var(--bg);}
 </div>
 
 <!-- ═══════════════════════════════════════════════════
+     TAB: 운영 모니터링 (정합성·이상감지)
+══════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-monitor">
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <h2 style="font-size:18px;font-weight:900;color:var(--text);">🩺 운영 모니터링</h2>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="monLastCheck" style="font-size:12px;color:var(--gray);"></span>
+      <button class="mon-refresh" onclick="renderMonitor()">🔄 다시 점검</button>
+    </div>
+  </div>
+  <p style="font-size:12.5px;color:var(--text2);margin-bottom:16px;">실시간 데이터 기준 · 데이터 정합성 6종 점검 및 이상 징후 자동 감지</p>
+  <div class="mon-grid" id="monKpi"></div>
+  <div class="mon-section-title">🔬 데이터 정합성 상세</div>
+  <div class="mon-integ-grid" id="monInteg"></div>
+  <div class="mon-section-title">🔔 운영 알림 & 조치 사항</div>
+  <div class="mon-alerts" id="monAlerts"></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
      TAB 6: 주간보고서 (대표이사 보고용)
 ══════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="panel-report">
@@ -551,7 +595,7 @@ const FIREBASE_CONFIG = {
   appId:             "1:58934449948:web:216a4d0adf255083bbccd9",
   measurementId:     "G-8V5R5Z2Y44"
 };
-const ADMIN_PW = 'hr2024!';
+const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
 
 // ── 비제조(임원+관리직) 교육 참여 대상 인원 ────────────────────────
 //   출처: 워크포스 인원변동현황(2026-03) · 생산직/현장기사/선원 제외.
@@ -605,27 +649,93 @@ let charts = {};
 // ══════════════════════════════════════════════════════════════
 // 4. AUTH
 // ══════════════════════════════════════════════════════════════
-function checkAuth() {
+function ensureFirebaseApp(){ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); }
+let _dashStarted = false;
+async function checkAuth() {
+  const email = (document.getElementById('authEmail').value||'').trim();
   const pw = document.getElementById('authPw').value;
-  if (pw === ADMIN_PW) {
-    sessionStorage.setItem(AUTH_KEY, '1');
-    document.getElementById('authOverlay').classList.add('hidden');
-    document.getElementById('mainPage').style.display = 'block';
-    document.getElementById('tabNav').style.display = 'flex';
-    initDashboard();
-  } else {
-    document.getElementById('authErr').textContent = '비밀번호가 올바르지 않습니다.';
-    document.getElementById('authPw').value = '';
+  const errEl = document.getElementById('authErr');
+  if(!email || !pw){ errEl.textContent='이메일과 비밀번호를 입력하세요.'; return; }
+  ensureFirebaseApp();
+  try {
+    const cred = await firebase.auth().signInWithEmailAndPassword(email, pw);
+    if (cred.user.uid !== ADMIN_UID) {
+      errEl.textContent='관리자 권한이 없는 계정입니다.';
+      await firebase.auth().signOut();
+      return;
+    }
+    enterDashboard();
+  } catch(e) {
+    errEl.textContent='로그인 실패 · 이메일/비밀번호를 확인하세요.';
+    document.getElementById('authPw').value='';
   }
 }
+function enterDashboard(){
+  if (_dashStarted) return; _dashStarted = true;
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.getElementById('mainPage').style.display = 'block';
+  document.getElementById('tabNav').style.display = 'flex';
+  initDashboard();
+}
 function doLogout() {
-  sessionStorage.removeItem(AUTH_KEY);
-  location.reload();
+  firebase.auth().signOut().finally(()=>location.reload());
 }
 
 // ══════════════════════════════════════════════════════════════
 // 5. TAB SWITCHING
 // ══════════════════════════════════════════════════════════════
+function monSeconds(l){
+  const t = l && l.lastActiveAt;
+  if(!t) return null;
+  if(typeof t === 'number') return t > 1e12 ? t/1000 : t;
+  if(t.seconds != null) return t.seconds;
+  if(t._seconds != null) return t._seconds;
+  const d = Date.parse(t); return isNaN(d) ? null : d/1000;
+}
+function monTime(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
+function renderMonitor(){
+  if(!document.getElementById('monKpi')) return;
+  const L = allLearners||[], C = allChampions||[], O = allOffline||[];
+  const total = L.length;
+  let issues = 0; const rows = [];
+  const noField = L.filter(l=>!l.email || !l.company).length;
+  rows.push(['학습자 레코드 무결성', noField===0?'이상 없음':('⚠ '+noField+'건 필드 누락'), noField===0?'mon-ok':'mon-warn']); if(noField>0) issues++;
+  const corrected = L.filter(l=>{const a=Object.values(l.modules||{}).filter(m=>m&&m.completed).length; return a>(l.completedCount||0);}).length;
+  rows.push(['진도 데이터 보정', corrected===0?'보정 없음':('자동 보정 '+corrected+'명'), corrected<Math.max(1,total*0.1)?'mon-ok':'mon-warn']);
+  const reqOK = L.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m.id]&&l.modules[m.id].completed)).length;
+  rows.push(['필수모듈 이수 정합', reqOK+'명 / 전체 '+total+'명 ('+(total?Math.round(reqOK/total*100):0)+'%)','mon-ok']);
+  const emails = L.map(l=>l.email).filter(Boolean); const dupE = emails.length - new Set(emails).size;
+  rows.push(['이메일 중복 여부', dupE===0?'중복 없음':('⚠ '+dupE+'건 중복'), dupE===0?'mon-ok':'mon-bad']); if(dupE>0) issues++;
+  const cn = C.map(c=>(c.candidateName||c.candidateEmail||'')+'_'+(c.company||'')); const dupC = cn.length - new Set(cn).size;
+  rows.push(['챔피언 추천 중복', dupC===0?'중복 없음':('⚠ '+dupC+'건 중복'), dupC===0?'mon-ok':'mon-warn']);
+  const offErr = O.filter(o=>(o.attendedCount||0)>(o.targetCount||0)).length;
+  rows.push(['오프라인 출석 오류', offErr===0?'이상 없음':('⚠ '+offErr+'건 오류'), offErr===0?'mon-ok':'mon-bad']); if(offErr>0) issues++;
+  const intScore = Math.round((1-issues/6)*100);
+  const weekAgo = Date.now()/1000 - 604800;
+  const inactive = L.filter(l=>{const sx=monSeconds(l); return sx!=null && sx<weekAgo;});
+  const notStarted = L.filter(l=>!(l.completionRate>0));
+  const lowScore = L.filter(l=>{const ms=Object.values(l.modules||{}).filter(m=>m&&m.completed&&m.score); if(!ms.length) return false; const avg=ms.reduce((a,m)=>a+m.score,0)/ms.length; return avg>0&&avg<50;});
+  let anomalies = 0; if(inactive.length>0) anomalies++; if(notStarted.length>total*0.3) anomalies++; if(lowScore.length>0) anomalies++;
+  const kpi = [
+    ['📊 데이터 정합성', intScore+'점', '6개 항목 · 이슈 '+issues+'건', issues===0?'mon-ok':issues<3?'mon-warn':'mon-bad'],
+    ['⚠️ 이상 감지', anomalies+'건', '비활성 '+inactive.length+' · 미시작 '+notStarted.length+' · 저성취 '+lowScore.length, anomalies===0?'mon-ok':anomalies<3?'mon-warn':'mon-bad'],
+    ['⏰ 7일 미접속', inactive.length+'명', total?(Math.round(inactive.length/total*100)+'% / 전체'):'—', inactive.length===0?'mon-ok':'mon-warn'],
+    ['🚫 미시작', notStarted.length+'명', total?(Math.round(notStarted.length/total*100)+'% / 전체'):'—', notStarted.length===0?'mon-ok':'mon-warn']
+  ];
+  document.getElementById('monKpi').innerHTML = kpi.map(k=>'<div class="mon-card"><div class="lab">'+k[0]+'</div><div class="val '+k[3]+'">'+k[1]+'</div><div class="sub">'+k[2]+'</div></div>').join('');
+  document.getElementById('monInteg').innerHTML = rows.map(r=>'<div class="mon-integ"><div class="l">'+r[0]+'</div><div class="v '+r[2]+'">'+r[1]+'</div></div>').join('');
+  const alerts = [];
+  if(inactive.length>0){ const nm=inactive.slice(0,3).map(l=>l.name||'(이름없음)').join(', '); alerts.push(['warn','⏰ 장기 미접속 학습자 '+inactive.length+'명', nm+(inactive.length>3?(' 외 '+(inactive.length-3)+'명'):'')+'이 7일 이상 미접속입니다. 독려 연락이 필요합니다.']); }
+  if(notStarted.length>0){ alerts.push(['warn','🚫 미시작 학습자 '+notStarted.length+'명','아직 한 개도 시작하지 않은 학습자가 있습니다. 개별 독려가 필요합니다.']); }
+  if(lowScore.length>0){ alerts.push(['warn','📉 저성취 학습자 '+lowScore.length+'명','이수 평균 50점 미만입니다. 보충 안내를 검토하세요.']); }
+  if(reqOK>0){ alerts.push(['ok','🎓 필수과정 이수 완료 '+reqOK+'명','필수 4개 모듈을 모두 완료한 학습자입니다.']); }
+  if(C.length>0){ alerts.push(['info','🏆 AI챔피언 후보 '+C.length+'명 접수','HR팀 검토가 필요합니다.']); }
+  if(issues===0 && anomalies===0){ alerts.push(['ok','✅ 모든 점검 정상','정합성·이상감지 전 항목 이상 없음.']); }
+  document.getElementById('monAlerts').innerHTML = alerts.map(a=>'<div class="mon-alert '+a[0]+'"><div class="t">'+a[1]+'</div><div class="d">'+a[2]+'</div></div>').join('');
+  const cm=document.getElementById('cnt-monitor'); if(cm) cm.textContent=(issues+anomalies);
+  const lc=document.getElementById('monLastCheck'); if(lc) lc.textContent='마지막 점검 '+monTime();
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -635,6 +745,7 @@ function switchTab(name) {
   if (name==='overview') { renderOverviewCharts(); }
   if (name==='champion') { renderChampionCharts(); }
   if (name==='report') { populateRptCompany(); renderReportTab(); }
+  if (name==='monitor') { renderMonitor(); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -644,7 +755,14 @@ function switchTab(name) {
 // 기기 변경(PC 재접속) 버그로 요약필드가 0으로 덮어써진 학습자도 modules 기록이 남아 있으면
 // 대시보드·CSV에서 자동으로 올바른 진도로 보정된다. (Firestore 원본은 변경하지 않음)
 function normalizeLearner(l){
-  const mods = l.modules || {};
+  // 진도는 'modules.M01' 형태의 납작한 점-필드(레거시 저장구조) 또는 중첩 map 양쪽으로
+  // 저장돼 있을 수 있다. 두 형식을 모두 인식해 표준 modules 객체로 복원한 뒤 요약을 재계산한다.
+  const mods = (l.modules && typeof l.modules === 'object') ? {...l.modules} : {};
+  Object.keys(l).forEach(k => {
+    const mt = k.match(/^modules\.(.+)$/);
+    if (mt) mods[mt[1]] = l[k];
+  });
+  l.modules = mods;
   const doneCount = Object.keys(mods).filter(id => mods[id] && mods[id].completed).length;
   if (doneCount > (l.completedCount || 0)) {
     l.completedCount = doneCount;
@@ -730,6 +848,7 @@ function onLearnersUpdated() {
   renderCompanyCompGrid();
   populateCompFilter();
   renderCompletionTable();
+  renderMonitor();
   if (document.getElementById('panel-report') && document.getElementById('panel-report').classList.contains('active')) {
     populateRptCompany(); renderReportTab();
   }
@@ -737,6 +856,7 @@ function onLearnersUpdated() {
 function onChampionsUpdated() {
   updateTabCounts();
   renderChampionSection();
+  renderMonitor();
 }
 function onOfflineUpdated() {
   updateTabCounts();
@@ -744,6 +864,7 @@ function onOfflineUpdated() {
   renderSessionCards();
   populateOfflineFilter();
   renderOfflineTable();
+  renderMonitor();
 }
 
 function updateTabCounts() {
@@ -1380,12 +1501,10 @@ function renderRptGroup(){
 
 function printReport(){document.body.classList.add('print-report');window.print();setTimeout(()=>document.body.classList.remove('print-report'),600);}
 
-if (sessionStorage.getItem(AUTH_KEY) === '1') {
-  document.getElementById('authOverlay').classList.add('hidden');
-  document.getElementById('mainPage').style.display = 'block';
-  document.getElementById('tabNav').style.display = 'flex';
-  initDashboard();
-}
+ensureFirebaseApp();
+firebase.auth().onAuthStateChanged((u)=>{
+  if (u && u.uid === ADMIN_UID) enterDashboard();
+});
 document.getElementById('authPw').addEventListener('keydown', e => { if(e.key==='Enter') checkAuth(); });
 </script>
 </body>
