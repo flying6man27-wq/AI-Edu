@@ -9,6 +9,7 @@
 <title>비제조부문 AI 역량강화 온라인 학습 포털</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -887,11 +888,17 @@ let db = null;
 const USER_KEY   = 'ai_portal_user_v1';
 const SCORES_KEY = 'ai_portal_scores_v1';
 
+let authReady = null;
 function initFirebase() {
   if (!FIREBASE_CONFIG.projectId || FIREBASE_CONFIG.projectId === 'YOUR_PROJECT_ID') return false;
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
+    // 보안 규칙이 인증을 요구하므로 접속 즉시 익명 로그인 (학습자 추가 입력 없음)
+    authReady = new Promise((resolve) => {
+      firebase.auth().onAuthStateChanged((u) => { if (u) resolve(u); });
+      firebase.auth().signInAnonymously().catch((e) => console.warn('[Auth] 익명 로그인 실패:', e));
+    });
     return true;
   } catch(e) { console.warn('[Firebase] 초기화 실패:', e); return false; }
 }
@@ -934,6 +941,7 @@ function getCurrentUser() {
 
 async function syncUserToFirebase(user) {
   if (!db) return;
+  if (authReady) await authReady;
   try {
     await db.collection('learners').doc(user.uid).set({
       name: user.name, company: user.company, email: user.email,
@@ -949,13 +957,16 @@ async function syncUserToFirebase(user) {
 async function syncModuleToFirebase(id, score) {
   const user = getCurrentUser();
   if (!db || !user) return;
+  if (authReady) await authReady;
   try {
+    // 중첩 map(modules:{M01:{...}})으로 저장한다. set+merge가 modules 맵 내부로 깊은 병합한다.
+    // (과거 코드는 set에 'modules.M01' 점-키를 넘겨 점이 글자그대로 필드명이 되는 버그가 있었음)
     const update = {
       lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
       completedCount: getDoneCount(),
-      completionRate: Math.round(getDoneCount() / MODULES.length * 100)
+      completionRate: Math.round(getDoneCount() / MODULES.length * 100),
+      modules: { [id]: { completed: true, completedAt: firebase.firestore.FieldValue.serverTimestamp(), score: score != null ? score : 0 } }
     };
-    update[`modules.${id}`] = { completed: true, completedAt: firebase.firestore.FieldValue.serverTimestamp(), score: score != null ? score : 0 };
     await db.collection('learners').doc(user.uid).set(update, { merge: true });
   } catch(e) { console.warn('[Firebase] 모듈 동기화 실패:', e); }
 }
@@ -964,10 +975,17 @@ async function syncModuleToFirebase(id, score) {
 // 기기를 바꿔 접속해도 동일 이메일이면 진도가 이어진다. (완료여부는 OR 병합 — 한쪽이라도 완료면 완료)
 async function loadProgressFromFirebase(user) {
   if (!db || !user) return false;
+  if (authReady) await authReady;
   try {
     const snap = await db.collection('learners').doc(user.uid).get();
     if (!snap.exists) return false;
-    const mods = (snap.data() || {}).modules || {};
+    const data = snap.data() || {};
+    // 진도가 'modules.M01' 납작한 점-필드(레거시) 또는 중첩 map 어느 쪽이든 모두 인식해 복원한다.
+    const mods = (data.modules && typeof data.modules === 'object') ? { ...data.modules } : {};
+    Object.keys(data).forEach(k => {
+      const mt = k.match(/^modules\.(.+)$/);
+      if (mt) mods[mt[1]] = data[k];
+    });
     const p = getProgress();
     const s = getScores();
     let changed = false;
@@ -1461,7 +1479,7 @@ async function submitChampion() {
     leadership:g('c_leadership'), summary, available:g('c_available'),
     managerConsent:g('c_managerConsent'),
   };
-  if(db){ try{ await db.collection('champion_nominees').add({...data, submittedAt:firebase.firestore.FieldValue.serverTimestamp()}); }catch(e){console.warn(e);} }
+  if(db){ try{ if(authReady) await authReady; await db.collection('champion_nominees').add({...data, submittedAt:firebase.firestore.FieldValue.serverTimestamp()}); }catch(e){console.warn(e);} }
   try{ const a=JSON.parse(localStorage.getItem('ai_champion_submissions')||'[]'); a.push(data); localStorage.setItem('ai_champion_submissions',JSON.stringify(a)); }catch(_){}
   btn.style.display='none';
   document.getElementById('champResult').innerHTML=`
