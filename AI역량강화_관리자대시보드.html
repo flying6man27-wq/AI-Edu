@@ -557,6 +557,7 @@ tr:hover td{background:var(--bg);}
   </div>
   <p style="font-size:12.5px;color:var(--text2);margin-bottom:16px;">실시간 데이터 기준 · 데이터 정합성 6종 점검 및 이상 징후 자동 감지</p>
   <div class="mon-grid" id="monKpi"></div>
+  <div id="monActions" style="margin:2px 0 16px;"></div>
   <div class="mon-section-title">🔬 데이터 정합성 상세</div>
   <div class="mon-integ-grid" id="monInteg"></div>
   <div class="mon-section-title">🔔 운영 알림 & 조치 사항</div>
@@ -732,8 +733,50 @@ function renderMonitor(){
   if(C.length>0){ alerts.push(['info','🏆 AI챔피언 후보 '+C.length+'명 접수','HR팀 검토가 필요합니다.']); }
   if(issues===0 && anomalies===0){ alerts.push(['ok','✅ 모든 점검 정상','정합성·이상감지 전 항목 이상 없음.']); }
   document.getElementById('monAlerts').innerHTML = alerts.map(a=>'<div class="mon-alert '+a[0]+'"><div class="t">'+a[1]+'</div><div class="d">'+a[2]+'</div></div>').join('');
+  const nudgeTargets=L.filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
+  const ma=document.getElementById('monActions');
+  if(ma){ ma.innerHTML = nudgeTargets.length>0
+    ? '<button class="mon-refresh" style="background:var(--gold);" onclick="sendNudgeEmails()">🔔 독려 대상 '+nudgeTargets.length+'명에게 메일 발송</button> <span style="font-size:11.5px;color:var(--gray);margin-left:8px;">7일 미접속 또는 미시작 + 이메일 보유자 기준</span>'
+    : '<span style="font-size:12.5px;color:var(--green);font-weight:700;">✓ 독려 대상 없음 — 전원 학습 진행 중</span>'; }
   const cm=document.getElementById('cnt-monitor'); if(cm) cm.textContent=(issues+anomalies);
   const lc=document.getElementById('monLastCheck'); if(lc) lc.textContent='마지막 점검 '+monTime();
+}
+
+function buildNudgeHtml(l, url){
+  const name=(l.name||'학습자');
+  const rate=(l.completionRate||0);
+  return '<div style="font-family:Apple SD Gothic Neo,Noto Sans KR,sans-serif;line-height:1.75;color:#222;max-width:560px;">'
+    +'<p>'+name+'님, 안녕하세요. HR 인사팀입니다.</p>'
+    +'<p>비제조부문 <b>AI 역량강화 온라인 학습</b> 진행 현황을 안내드립니다. 현재 '+name+'님의 이수율은 <b>'+rate+'%</b>입니다.</p>'
+    +'<p>업무로 바쁘시겠지만, 잠시 시간을 내어 학습을 이어가 주시면 감사하겠습니다. 아래 버튼에서 바로 이어서 진행하실 수 있습니다.</p>'
+    +'<p style="margin:18px 0;"><a href="'+url+'" style="background:#1660C8;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:700;">학습 이어하기 ▶</a></p>'
+    +'<p style="color:#999;font-size:12px;border-top:1px solid #eee;padding-top:12px;margin-top:20px;">본 메일은 HR 인사팀 AI 역량강화 운영 시스템에서 자동 발송되었습니다. 이미 학습을 진행 중이시라면 양해 부탁드립니다.</p>'
+    +'</div>';
+}
+async function sendNudgeEmails(){
+  if(!db){ alert('Firebase 미연결 상태에서는 발송할 수 없습니다.'); return; }
+  const weekAgo=Date.now()/1000-604800;
+  const targets=(allLearners||[]).filter(l=>{
+    if(!l.email) return false;
+    const sx=monSeconds(l); const inactive = sx!=null && sx<weekAgo;
+    return inactive || !(l.completionRate>0);
+  });
+  if(targets.length===0){ alert('현재 독려 대상이 없습니다.'); return; }
+  const preview=targets.slice(0,5).map(l=>l.name||l.email).join(', ')+(targets.length>5?(' 외 '+(targets.length-5)+'명'):'');
+  if(!confirm('독려 메일을 발송합니다.\n\n대상: '+targets.length+'명\n수신자: '+preview+'\n\n계속하시겠습니까?')) return;
+  const PORTAL_URL='https://flying6man27-wq.github.io/AI-Edu/AI%EC%97%AD%EB%9F%89%EA%B0%95%ED%99%94_%EC%98%A8%EB%9D%BC%EC%9D%B8%ED%95%99%EC%8A%B5%ED%8F%AC%ED%84%B8_%EB%AA%A8%EB%B0%94%EC%9D%BC%EC%B5%9C%EC%A0%81%ED%99%94.html';
+  let ok=0, fail=0;
+  for(const l of targets){
+    try{
+      await db.collection('mail').add({
+        to:[l.email],
+        message:{ subject:'[AI 역량강화] 학습 진행 안내드립니다', html: buildNudgeHtml(l, PORTAL_URL) },
+        _meta:{ type:'nudge', learner:(l.name||null), company:(l.company||null), createdAt:firebase.firestore.FieldValue.serverTimestamp() }
+      });
+      ok++;
+    }catch(e){ console.warn('[nudge]', e); fail++; }
+  }
+  alert('발송 요청 완료: '+ok+'건'+(fail?(' · 실패 '+fail+'건'):'')+'\n\n실제 메일 발송은 Firebase Trigger Email 확장이 처리합니다.\n(확장 미설치 시 mail 컬렉션에 기록만 됩니다.)');
 }
 
 function switchTab(name) {
