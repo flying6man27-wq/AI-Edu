@@ -623,14 +623,14 @@ const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
 //   null = 인원 데이터 미확보. HR팀이 직접 수정 가능.
 const TARGET_HEADCOUNT = {
   // 2026-05 인력현황 대시보드 기준 = 임원 + 사무직 (생산직·현장기사 제외)
-  '좋은사람들': 143, '휴맥스해운항공': 37, '쌤앤파커스': 33, '연합': 27,
-  '인터렉스메가라인': 21, '미찌푸드': 19, '상일식품': 17, '대원티앤엠': 10,
+  '좋은사람들': 143, '휴맥스해운항공': 37, '쌤앤파커스': 33, '연합': 37, // 대원티앤엠(10) 통합
+  '인터렉스메가라인': 21, '미찌푸드': 19, '상일식품': 17,
   '우리인터텍스': 3,
   // 아래 2개사는 인력현황 대시보드(9개 관계사)에 미포함 → 사용자 지정값(추후 확정)
   '인베스터유나이티드': 5, '세코글로벌': 5
 };
 const TARGET_BASIS = '임원+사무직 · 인력현황 2026-05 기준';
-const REPORT_COMPANIES = ['연합','대원티앤엠','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품','미찌푸드','우리인터텍스','인베스터유나이티드','세코글로벌'];
+const REPORT_COMPANIES = ['연합','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품','미찌푸드','우리인터텍스','인베스터유나이티드','세코글로벌'];
 
 // ══════════════════════════════════════════════════════════════
 // 2. MODULE META
@@ -721,8 +721,8 @@ function renderMonitor(){
   let issues = 0; const rows = [];
   const noField = L.filter(l=>!l.email || !l.company).length;
   rows.push(['학습자 레코드 무결성', noField===0?'이상 없음':('⚠ '+noField+'건 필드 누락'), noField===0?'mon-ok':'mon-warn']); if(noField>0) issues++;
-  const corrected = L.filter(l=>{const a=Object.values(l.modules||{}).filter(m=>m&&m.completed).length; return a>(l.completedCount||0);}).length;
-  rows.push(['진도 데이터 보정', corrected===0?'보정 없음':('자동 보정 '+corrected+'명'), corrected<Math.max(1,total*0.1)?'mon-ok':'mon-warn']);
+  const corrected = L.filter(l=>l._driftFix).length;
+  rows.push(['진도 데이터 보정', corrected===0?'보정 없음 (DB 동기화 정상)':('보정 대기 '+corrected+'명'), corrected<Math.max(1,total*0.1)?'mon-ok':'mon-warn']);
   const reqOK = L.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m.id]&&l.modules[m.id].completed)).length;
   rows.push(['필수모듈 이수 정합', reqOK+'명 / 전체 '+total+'명 ('+(total?Math.round(reqOK/total*100):0)+'%)','mon-ok']);
   const emails = L.map(l=>l.email).filter(Boolean); const dupE = emails.length - new Set(emails).size;
@@ -755,9 +755,15 @@ function renderMonitor(){
   document.getElementById('monAlerts').innerHTML = alerts.map(a=>'<div class="mon-alert '+a[0]+'"><div class="t">'+a[1]+'</div><div class="d">'+a[2]+'</div></div>').join('');
   const nudgeTargets=L.filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
   const ma=document.getElementById('monActions');
-  if(ma){ ma.innerHTML = nudgeTargets.length>0
-    ? '<button class="mon-refresh" style="background:var(--gold);" onclick="sendNudgeEmails()">✉️ 독려 대상 '+nudgeTargets.length+'명에게 메일 보내기</button> <span style="font-size:11.5px;color:var(--gray);margin-left:8px;">7일 미접속·미시작자 · 개별 또는 전체(BCC) 발송 선택</span>'
-    : '<span style="font-size:12.5px;color:var(--green);font-weight:700;">✓ 독려 대상 없음 — 전원 학습 진행 중</span>'; }
+  if(ma){
+    let html = nudgeTargets.length>0
+      ? '<button class="mon-refresh" style="background:var(--gold);" onclick="sendNudgeEmails()">✉️ 독려 대상 '+nudgeTargets.length+'명에게 메일 보내기</button> <span style="font-size:11.5px;color:var(--gray);margin-left:8px;">7일 미접속·미시작자 · 개별 또는 전체(BCC) 발송 선택</span>'
+      : '<span style="font-size:12.5px;color:var(--green);font-weight:700;">✓ 독려 대상 없음 — 전원 학습 진행 중</span>';
+    if(corrected>0 && db && !demoMode){
+      html += '<div style="margin-top:8px;"><button class="mon-refresh" style="background:var(--blue);" onclick="autoCorrectProgress(false)">🔧 진도 데이터 보정 '+corrected+'명 Firestore에 적용</button> <span style="font-size:11.5px;color:var(--gray);margin-left:8px;">modules 기준 실제 이수로 completedCount·completionRate 갱신(올려쓰기만)</span></div>';
+    }
+    ma.innerHTML = html;
+  }
   const cm=document.getElementById('cnt-monitor'); if(cm) cm.textContent=(issues+anomalies);
   const lc=document.getElementById('monLastCheck'); if(lc) lc.textContent='마지막 점검 '+monTime();
 }
@@ -794,6 +800,36 @@ function copyNudgeTsv(){
   else { window.prompt('아래 내용을 복사(Ctrl+C)해 Google Sheets에 붙여넣으세요:', tsv); }
 }
 function closeNudgeModal(){ const m=document.getElementById('nudgeModal'); if(m) m.innerHTML=''; }
+// ── 진도 데이터 자동 보정 (Firestore 실제 쓰기) ──────────────
+// normalizeLearner가 표시한 _driftFix(=DB의 completedCount가 실제보다 낮음) 학습자를
+// modules 기준 실제 이수로 갱신한다. 항상 '올려쓰기'만 하므로 진도 손실이 없고,
+// 보정 후 onSnapshot이 재정규화하면 _driftFix가 false가 되어 수렴한다.
+let _autoCorrected=false;
+async function autoCorrectProgress(silent){
+  if(!db || demoMode){ if(!silent) alert('Firebase 연결 상태에서만 보정할 수 있습니다.'); return; }
+  const targets=(allLearners||[]).filter(l=>l._driftFix);
+  if(targets.length===0){ if(!silent) alert('보정할 대상이 없습니다. (DB 동기화 정상)'); return; }
+  let fixed=0;
+  try{
+    for(let i=0;i<targets.length;i+=400){ // 배치 500 한도 안전 마진
+      const batch=db.batch();
+      targets.slice(i,i+400).forEach(l=>{
+        const done=Object.keys(l.modules||{}).filter(id=>l.modules[id]&&l.modules[id].completed).length;
+        batch.update(db.collection('learners').doc(l.id),{
+          completedCount: done,
+          completionRate: Math.round(done/TOTAL_MOD*100),
+          correctedBy: 'ops_monitor',
+          correctedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        l._driftFix=false; fixed++;
+      });
+      await batch.commit();
+    }
+  }catch(e){ console.warn('[autoCorrect]',e); if(!silent) alert('보정 중 오류: '+e.message); return; }
+  if(!silent) alert(fixed+'명의 진도 데이터를 Firestore에 보정했습니다.');
+  renderMonitor();
+}
+
 let opsHistory=[]; let _snapSaved=false;
 function computeOpsSnapshot(){
   var L=allLearners||[], C=allChampions||[], O=allOffline||[];
@@ -998,7 +1034,11 @@ function normalizeLearner(l){
   });
   l.modules = mods;
   const doneCount = Object.keys(mods).filter(id => mods[id] && mods[id].completed).length;
-  if (doneCount > (l.completedCount || 0)) {
+  const storedCount = l.completedCount || 0;
+  // Firestore의 completedCount가 실제 이수보다 낮으면 DB 보정 필요(화면은 아래에서 즉시 보정).
+  // autoCorrectProgress()가 이 플래그를 보고 Firestore에 실제 갱신을 수행한다.
+  l._driftFix = doneCount > storedCount;
+  if (doneCount > storedCount) {
     l.completedCount = doneCount;
     l.completionRate = Math.round(doneCount / TOTAL_MOD * 100);
   }
@@ -1085,6 +1125,8 @@ function onLearnersUpdated() {
   renderCompletionTable();
   renderMonitor();
   setTimeout(saveSnapshotIfNeeded, 4000);
+  // 데이터 로드 후 1회 진도 자동 보정(에이전트 무인 조치) — 올려쓰기만, 멱등
+  if(db && !demoMode && !_autoCorrected && allLearners.length){ _autoCorrected=true; setTimeout(function(){ autoCorrectProgress(true); }, 4500); }
   if (document.getElementById('panel-report') && document.getElementById('panel-report').classList.contains('active')) {
     populateRptCompany(); renderReportTab();
   }

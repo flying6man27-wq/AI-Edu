@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학습자 관리 (소속 변경·진도 초기화·삭제)</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--blue:#1660C8;--green:#1A9650;--gold:#C8880A;--red:#D93025;--purple:#6432B8;--gray:#7A7A9A;--border:#D8DCF0;--bg:#F0F2F8;--text:#12122A;--text2:#38385C;
+  --font:'Apple SD Gothic Neo','Noto Sans KR','맑은 고딕',sans-serif;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);padding:22px;}
+.wrap{max-width:1080px;margin:0 auto;}
+h1{font-size:20px;font-weight:900;margin-bottom:4px;}
+.sub{font-size:12px;color:var(--gray);margin-bottom:18px;}
+.bar{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.bar label{font-size:12px;font-weight:700;color:var(--text2);}
+input,select{font-family:var(--font);font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--text);}
+.search{flex:1;min-width:160px;}
+.stat{margin-left:auto;font-size:12px;color:var(--gray);font-weight:700;}
+.stat b{color:var(--blue);font-size:15px;}
+table{width:100%;border-collapse:collapse;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;}
+th{font-size:11px;font-weight:800;color:var(--gray);text-align:left;padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap;}
+td{font-size:12.5px;color:var(--text2);padding:9px 12px;border-bottom:1px solid var(--bg);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(22,96,200,.03);}
+.nm{font-weight:800;color:var(--text);}
+.em{font-size:11px;color:var(--gray);}
+.prog-w{display:inline-block;width:70px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;vertical-align:middle;margin-right:6px;}
+.prog-w>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--green));}
+.rowsel{font-size:12px;padding:5px 8px;}
+.btn{font-family:var(--font);font-weight:700;border:none;border-radius:7px;padding:6px 11px;cursor:pointer;font-size:11.5px;margin-left:4px;}
+.btn-save{background:var(--blue);color:#fff;}
+.btn-reset{background:var(--gold);color:#fff;}
+.btn-del{background:var(--red);color:#fff;}
+.btn:hover{filter:brightness(1.08);}
+.acts{white-space:nowrap;}
+.msg{font-size:13px;padding:11px 14px;border-radius:9px;margin-bottom:12px;font-weight:600;}
+.msg.ok{background:rgba(26,150,80,.1);color:var(--green);}
+.msg.err{background:rgba(217,48,37,.1);color:var(--red);}
+.msg.info{background:rgba(22,96,200,.08);color:var(--blue);}
+.empty{text-align:center;padding:30px;color:var(--gray);}
+.gate{position:fixed;inset:0;background:linear-gradient(135deg,#1660C8,#6432B8);display:flex;align-items:center;justify-content:center;z-index:99;}
+.gate.hidden{display:none;}
+.gate-box{background:#fff;border-radius:16px;padding:28px;width:320px;text-align:center;}
+.gate-box h2{font-size:17px;margin-bottom:14px;}
+.gate-box input{width:100%;margin-bottom:10px;}
+.gate-box .btn-save{width:100%;padding:11px;}
+.note{font-size:11px;color:var(--gray);margin-top:14px;line-height:1.7;}
+.danger{background:rgba(217,48,37,.06);border:1px solid rgba(217,48,37,.2);border-radius:9px;padding:10px 12px;font-size:11.5px;color:var(--red);margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="gate-box">
+    <h2>🔐 HR 관리자 인증</h2>
+    <input id="pw" type="password" placeholder="관리자 비밀번호" onkeydown="if(event.key==='Enter')unlock()">
+    <button class="btn btn-save" onclick="unlock()">확인</button>
+    <div id="gateErr" class="msg err" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>👤 학습자 관리</h1>
+  <div class="sub">AI 역량강화 학습자(learners) 소속 변경 · 진도 초기화 · 삭제 · SECO 비제조부문 HR 전용</div>
+
+  <div class="danger">⚠ <b>삭제는 되돌릴 수 없습니다.</b> 삭제 시 해당 학습자의 진도·이수 기록이 영구 삭제됩니다. 신중히 사용하세요.</div>
+
+  <div id="globalMsg"></div>
+
+  <div class="bar">
+    <label>관계사</label>
+    <select id="filterCo" onchange="renderTable()"><option value="">전체</option></select>
+    <input class="search" id="search" type="text" placeholder="이름·이메일 검색..." oninput="renderTable()">
+    <div class="stat" id="stat">—</div>
+  </div>
+
+  <div id="tableWrap"><div class="empty">불러오는 중...</div></div>
+
+  <div class="note">
+    ※ 모든 변경은 즉시 Firebase에 반영되어 관리자 대시보드·주간보고서·대표용 페이지에 적용됩니다.<br>
+    ※ 진도 초기화: 이수율·완료 모듈 기록을 0으로 되돌립니다(계정은 유지). · 삭제: 학습자 문서를 완전히 제거합니다.
+  </div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
+  authDomain:"ai-edu-seco.firebaseapp.com",
+  projectId:"ai-edu-seco",
+  storageBucket:"ai-edu-seco.firebasestorage.app",
+  messagingSenderId:"58934449948",
+  appId:"1:58934449948:web:216a4d0adf255083bbccd9"
+};
+const ADMIN_PW='hr2024!';
+const COMPANIES=['연합','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품','미찌푸드','우리인터텍스','인베스터유나이티드','세코글로벌'];
+let db=null, learners=[];
+
+function unlock(){
+  if(document.getElementById('pw').value!==ADMIN_PW){
+    const e=document.getElementById('gateErr');e.style.display='block';e.textContent='비밀번호가 올바르지 않습니다.';return;
+  }
+  document.getElementById('gate').classList.add('hidden');
+  if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db=firebase.firestore();
+  document.getElementById('filterCo').innerHTML='<option value="">전체</option>'+COMPANIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+  db.collection('learners').onSnapshot(snap=>{
+    learners=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTable();
+  }, e=>{ msg('err','데이터 조회 오류: '+e.message); });
+}
+
+function msg(type,text){
+  const m=document.getElementById('globalMsg');
+  m.innerHTML=`<div class="msg ${type}">${text}</div>`;
+  if(type==='ok') setTimeout(()=>{ if(m.firstChild) m.innerHTML=''; }, 4000);
+}
+
+function renderTable(){
+  const co=document.getElementById('filterCo').value;
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  let rows=learners.filter(l=>{
+    if(co && l.company!==co) return false;
+    if(q && !((l.name||'').toLowerCase().includes(q)||(l.email||'').toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=>(a.company||'').localeCompare(b.company||'')||(a.name||'').localeCompare(b.name||''));
+  document.getElementById('stat').innerHTML=`전체 <b>${learners.length}</b>명 · 표시 <b>${rows.length}</b>명`;
+  const wrap=document.getElementById('tableWrap');
+  if(!rows.length){ wrap.innerHTML='<div class="empty">📭 해당하는 학습자가 없습니다.</div>'; return; }
+  wrap.innerHTML=`<table><thead><tr>
+    <th>#</th><th>이름</th><th>이메일</th><th>진도</th><th>소속 (변경)</th><th>작업</th>
+  </tr></thead><tbody>${rows.map((l,i)=>{
+    const r=l.completionRate||0;
+    const opts=COMPANIES.map(c=>`<option value="${c}"${c===l.company?' selected':''}>${c}</option>`).join('');
+    const cur=(l.company&&!COMPANIES.includes(l.company))?`<option value="${l.company}" selected>${l.company} (목록 외)</option>`:'';
+    return `<tr>
+      <td style="color:var(--gray)">${i+1}</td>
+      <td class="nm">${l.name||'—'}</td>
+      <td class="em">${l.email||'—'}</td>
+      <td><span class="prog-w"><i style="width:${r}%"></i></span>${r}%</td>
+      <td><select class="rowsel" id="sel_${l.id}">${cur}${opts}</select></td>
+      <td class="acts">
+        <button class="btn btn-save" onclick="changeCompany('${l.id}')">소속 저장</button>
+        <button class="btn btn-reset" onclick="resetProgress('${l.id}')">진도 초기화</button>
+        <button class="btn btn-del" onclick="removeLearner('${l.id}')">삭제</button>
+      </td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function find(id){ return learners.find(l=>l.id===id)||{}; }
+
+function changeCompany(id){
+  const l=find(id);
+  const newCo=document.getElementById('sel_'+id).value;
+  if(newCo===l.company){ msg('info',`${l.name} 님은 이미 '${newCo}' 소속입니다.`); return; }
+  if(!confirm(`${l.name} 님의 소속을\n[${l.company||'없음'}] → [${newCo}] (으)로 변경할까요?`)) return;
+  db.collection('learners').doc(id).update({company:newCo})
+    .then(()=>msg('ok',`✅ ${l.name} 님 소속을 '${newCo}'(으)로 변경했습니다.`))
+    .catch(e=>msg('err',`변경 실패: ${e.message}`));
+}
+
+function resetProgress(id){
+  const l=find(id);
+  if(!confirm(`${l.name} 님의 학습 진도를 초기화할까요?\n(이수율·완료 모듈 기록이 0으로 초기화됩니다. 계정은 유지)`)) return;
+  db.collection('learners').doc(id).update({completionRate:0, completedCount:0, modules:{}})
+    .then(()=>msg('ok',`✅ ${l.name} 님 진도를 초기화했습니다.`))
+    .catch(e=>msg('err',`초기화 실패: ${e.message}`));
+}
+
+function removeLearner(id){
+  const l=find(id);
+  if(!confirm(`⚠ ${l.name} 님(${l.company||'소속없음'} · ${l.email||'-'})을 완전히 삭제할까요?\n진도·이수 기록이 영구 삭제되며 되돌릴 수 없습니다.`)) return;
+  const typed=prompt(`삭제를 확정하려면 이름을 그대로 입력하세요: ${l.name}`);
+  if(typed===null) return;
+  if((typed||'').trim()!==(l.name||'').trim()){ msg('err','이름이 일치하지 않아 삭제를 취소했습니다.'); return; }
+  db.collection('learners').doc(id).delete()
+    .then(()=>msg('ok',`🗑 ${l.name} 님을 삭제했습니다.`))
+    .catch(e=>msg('err',`삭제 실패: ${e.message}<br>(Firestore 규칙에서 learners 삭제 허용 여부를 확인하세요)`));
+}
+</script>
+</body>
+</html>

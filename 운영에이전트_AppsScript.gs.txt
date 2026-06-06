@@ -1,0 +1,239 @@
+/**
+ * AI 역량강화 · 운영유지 에이전트 (서버/상시구동 버전) — Google Apps Script
+ * ============================================================================
+ * 운영 에이전트 화면은 AI역량강화_관리자대시보드.html의 '🩺 운영모니터링' 탭이지만,
+ * 그 탭은 브라우저가 열려 있을 때만 동작합니다.
+ * 이 스크립트는 Google 서버에서 30분마다 무인 실행되어, 대시보드를 닫아도
+ *   ① 데이터 정합성 점검 + 진도 자동 보정(Firestore 실제 쓰기)
+ *   ② 이상 징후 감지 시 관리자에게 이메일 알림
+ *   ③ 매주 월요일 주간 요약 보고서 이메일 발송
+ * 을 수행합니다. (대시보드 모니터링 탭과 동일 규칙 · 보완재)
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * [사전 준비 — 1회]
+ *  (A) 이 스크립트를 실행하는 Google 계정이 GCP 프로젝트 'ai-edu-seco'의
+ *      편집자(Editor) 이상 권한이 있어야 합니다. (Firestore 읽기/쓰기를 위해)
+ *      - Firebase 콘솔 → 프로젝트 설정 → 사용자 및 권한에서 확인/추가.
+ *      - 보통 프로젝트를 만든 계정(=관리자 계정)이면 이미 소유자입니다.
+ *  (B) appsscript.json 매니페스트에 datastore 권한을 추가해야 합니다.
+ *      편집기 좌측 ⚙(프로젝트 설정) → "appsscript.json 매니페스트 파일 표시" 체크 →
+ *      파일 목록의 appsscript.json 을 아래로 교체:
+ *
+ *        {
+ *          "timeZone": "Asia/Seoul",
+ *          "exceptionLogging": "STACKDRIVER",
+ *          "runtimeVersion": "V8",
+ *          "oauthScopes": [
+ *            "https://www.googleapis.com/auth/datastore",
+ *            "https://www.googleapis.com/auth/script.send_mail",
+ *            "https://www.googleapis.com/auth/script.external_request",
+ *            "https://mail.google.com/"
+ *          ]
+ *        }
+ *
+ * [설치 순서]
+ *  1) script.google.com 에서 새 프로젝트 생성 → 이 코드를 통째로 붙여넣고 저장.
+ *  2) 위 (B)대로 appsscript.json 교체.
+ *  3) 상단 CONFIG의 ADMIN_EMAIL 을 본인 이메일로 확인/수정.
+ *  4) 함수 목록에서  setupTriggers  선택 → 실행 → 권한 승인(허용).
+ *       → 30분 점검 + 매주 월요일 보고서 트리거가 설치됩니다.
+ *  5) 테스트: 함수 목록에서  runOpsCheck  를 직접 실행 → 실행 로그 확인,
+ *            sendWeeklyReport  를 직접 실행 → 메일 수신 확인.
+ * ============================================================================
+ */
+
+// ───────────────────────────── CONFIG ─────────────────────────────
+var PROJECT_ID    = 'ai-edu-seco';
+var ADMIN_EMAIL   = 'flying6man27@gmail.com';   // 알림/보고서 수신자
+var TOTAL_MODS    = 15;
+var REQUIRED_MODS = ['M01','M02','M03','M04'];
+var TARGET_HEADCOUNT = {
+  '좋은사람들':143,'휴맥스해운항공':37,'쌤앤파커스':33,'연합':37,'인터렉스메가라인':21,
+  '미찌푸드':19,'상일식품':17,'우리인터텍스':3,'인베스터유나이티드':5,'세코글로벌':5
+};
+
+// ───────────────────────── TRIGGER 설치 ───────────────────────────
+function setupTriggers(){
+  // 기존 동일 트리거 제거(중복 방지)
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    var fn = t.getHandlerFunction();
+    if(fn==='runOpsCheck' || fn==='sendWeeklyReport') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('runOpsCheck').timeBased().everyMinutes(30).create();
+  ScriptApp.newTrigger('sendWeeklyReport').timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create(); // 매주 월 08시
+  Logger.log('트리거 설치 완료: runOpsCheck(30분), sendWeeklyReport(월 08시)');
+}
+
+// ───────────── Firestore REST 헬퍼 (OAuth 토큰 사용) ───────────────
+function fsBase_(){
+  return 'https://firestore.googleapis.com/v1/projects/'+PROJECT_ID+
+         '/databases/(default)/documents';
+}
+function fsHeaders_(){
+  return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+}
+// learners 컬렉션 전체를 페이지네이션으로 읽어 평탄한 객체 배열로 반환
+function fsListLearners_(){
+  var out = [], pageToken = '';
+  do {
+    var url = fsBase_() + '/learners?pageSize=300' + (pageToken ? '&pageToken='+encodeURIComponent(pageToken) : '');
+    var res = UrlFetchApp.fetch(url, { headers: fsHeaders_(), muteHttpExceptions: true });
+    if(res.getResponseCode() !== 200){
+      throw new Error('Firestore 읽기 실패 ('+res.getResponseCode()+'): '+res.getContentText());
+    }
+    var body = JSON.parse(res.getContentText());
+    (body.documents || []).forEach(function(doc){
+      var o = decodeFields_(doc.fields || {});
+      o.__id = doc.name.split('/').pop();
+      out.push(o);
+    });
+    pageToken = body.nextPageToken || '';
+  } while(pageToken);
+  return out;
+}
+// 진도 보정 PATCH: 지정 필드만 갱신(updateMask)
+function fsPatchLearner_(id, completedCount, completionRate){
+  var url = fsBase_() + '/learners/' + encodeURIComponent(id) +
+    '?updateMask.fieldPaths=completedCount' +
+    '&updateMask.fieldPaths=completionRate' +
+    '&updateMask.fieldPaths=correctedBy' +
+    '&updateMask.fieldPaths=correctedAt';
+  var payload = { fields: {
+    completedCount: { integerValue: String(completedCount) },
+    completionRate: { integerValue: String(completionRate) },
+    correctedBy:    { stringValue: 'ops_agent_gas' },
+    correctedAt:    { timestampValue: new Date().toISOString() }
+  }};
+  var res = UrlFetchApp.fetch(url, {
+    method: 'patch', contentType: 'application/json',
+    headers: fsHeaders_(), payload: JSON.stringify(payload), muteHttpExceptions: true
+  });
+  if(res.getResponseCode() !== 200){
+    Logger.log('보정 실패('+id+'): '+res.getContentText());
+    return false;
+  }
+  return true;
+}
+// Firestore Value → JS 변환 (필요한 타입만)
+function decodeValue_(v){
+  if(v==null) return null;
+  if('stringValue' in v) return v.stringValue;
+  if('integerValue' in v) return parseInt(v.integerValue,10);
+  if('doubleValue' in v) return v.doubleValue;
+  if('booleanValue' in v) return v.booleanValue;
+  if('timestampValue' in v) return { seconds: Math.floor(new Date(v.timestampValue).getTime()/1000) };
+  if('mapValue' in v) return decodeFields_(v.mapValue.fields || {});
+  if('arrayValue' in v) return (v.arrayValue.values||[]).map(decodeValue_);
+  if('nullValue' in v) return null;
+  return null;
+}
+function decodeFields_(fields){
+  var o = {};
+  Object.keys(fields).forEach(function(k){ o[k] = decodeValue_(fields[k]); });
+  return o;
+}
+
+// ─────────────── 핵심 로직 (대시보드와 동일 규칙) ──────────────────
+function actualCompleted_(l){
+  var set = {};
+  if(l.modules && typeof l.modules==='object') for(var k in l.modules) set[k]=l.modules[k];
+  // 레거시 납작 키 'modules.M01' 도 합산
+  for(var key in l){ var m=key.match(/^modules\.(.+)$/); if(m) set[m[1]]=l[key]; }
+  var n=0; for(var id in set){ var mod=set[id]; if(mod && mod.completed) n++; }
+  return n;
+}
+function reqPassed_(l){
+  return REQUIRED_MODS.every(function(m){ return l.modules && l.modules[m] && l.modules[m].completed; });
+}
+function summarize_(learners){
+  var total = learners.length;
+  var weekAgo = Date.now()/1000 - 604800;
+  var inactive=0, notStarted=0, reqPass=0, sumRate=0, needFix=0;
+  learners.forEach(function(l){
+    if(l.lastActiveAt && (l.lastActiveAt.seconds||0) < weekAgo) inactive++;
+    if(!(l.completionRate>0)) notStarted++;
+    if(reqPassed_(l)) reqPass++;
+    sumRate += (l.completionRate||0);
+    if(actualCompleted_(l) > (l.completedCount||0)) needFix++;
+  });
+  var sumT=0; Object.keys(TARGET_HEADCOUNT).forEach(function(k){ sumT+=TARGET_HEADCOUNT[k]; });
+  return {
+    total: total, target: sumT,
+    enrollRate: sumT?Math.round(total/sumT*100):0,
+    avgRate: total?Math.round(sumRate/total):0,
+    reqPass: reqPass, inactive: inactive, notStarted: notStarted, needFix: needFix
+  };
+}
+
+// ───────────── ① 30분 점검 + 진도 자동 보정 + ② 알림 ──────────────
+function runOpsCheck(){
+  var learners;
+  try { learners = fsListLearners_(); }
+  catch(e){
+    MailApp.sendEmail(ADMIN_EMAIL, '[운영에이전트] Firebase 읽기 오류', String(e));
+    return;
+  }
+  // 진도 자동 보정 (올려쓰기만)
+  var fixed = 0;
+  learners.forEach(function(l){
+    var actual = actualCompleted_(l);
+    if(actual > (l.completedCount||0)){
+      var rate = Math.round(actual/TOTAL_MODS*100);
+      if(fsPatchLearner_(l.__id, actual, rate)) fixed++;
+    }
+  });
+  var s = summarize_(learners);
+  Logger.log('점검완료 총'+s.total+'명 / 보정'+fixed+'명 / 미접속'+s.inactive+' 미시작'+s.notStarted);
+
+  // 이상 징후 알림 (임계 초과 시에만 메일 — 스팸 방지)
+  var alerts = [];
+  if(s.inactive > 0) alerts.push('• 7일 이상 미접속 학습자: '+s.inactive+'명');
+  if(s.notStarted > s.total*0.3) alerts.push('• 미시작 학습자 30% 초과: '+s.notStarted+'명');
+  if(fixed > 0) alerts.push('• 진도 데이터 자동 보정: '+fixed+'명 (Firestore 갱신 완료)');
+  if(alerts.length){
+    var body =
+      'AI 역량강화 온라인교육 운영 점검 결과 주의 항목이 감지되었습니다.\n\n'+
+      alerts.join('\n')+'\n\n'+
+      '[현황] 총 '+s.total+'명 / 등록률 '+s.enrollRate+'% / 평균 이수율 '+s.avgRate+'% / 필수이수 '+s.reqPass+'명\n\n'+
+      '점검 시각: '+new Date().toLocaleString('ko-KR')+'\n— 운영유지 에이전트(자동 발송)';
+    MailApp.sendEmail(ADMIN_EMAIL, '[운영에이전트] 운영 점검 알림 ('+alerts.length+'건)', body);
+  }
+}
+
+// ───────────── ⑤ 주간 요약 보고서 이메일 (매주 월요일) ─────────────
+function sendWeeklyReport(){
+  var learners;
+  try { learners = fsListLearners_(); } catch(e){ Logger.log(e); return; }
+  var s = summarize_(learners);
+  // 소속별 집계
+  var by = {};
+  learners.forEach(function(l){
+    var c = l.company || '미상';
+    if(!by[c]) by[c] = { n:0, sum:0, done:0 };
+    by[c].n++; by[c].sum += (l.completionRate||0);
+    if(reqPassed_(l)) by[c].done++;
+  });
+  var rows = Object.keys(by).sort(function(a,b){ return by[b].n-by[a].n; }).map(function(c){
+    var o=by[c], tgt=TARGET_HEADCOUNT[c]||'-';
+    return '<tr><td style="text-align:left">'+c+'</td><td>'+o.n+'</td><td>'+tgt+'</td><td>'+
+           Math.round(o.sum/o.n)+'%</td><td>'+o.done+'</td></tr>';
+  }).join('');
+  var html =
+   '<div style="font-family:sans-serif;max-width:760px;color:#1a2235">'+
+   '<h2>📊 AI 역량강화 온라인교육 주간 운영 보고서</h2>'+
+   '<div style="color:#64748b;font-size:12px">생성: '+new Date().toLocaleString('ko-KR')+' · 운영유지 에이전트 자동 발송</div>'+
+   '<p><b>총 학습자</b> '+s.total+'명 (대상 '+s.target+'명, 등록률 '+s.enrollRate+'%)<br>'+
+   '<b>평균 이수율</b> '+s.avgRate+'% · <b>필수과정 이수</b> '+s.reqPass+'명<br>'+
+   '<b>7일 미접속</b> '+s.inactive+'명 · <b>미시작</b> '+s.notStarted+'명</p>'+
+   '<table border="1" cellpadding="6" style="border-collapse:collapse;font-size:13px;text-align:center">'+
+   '<thead><tr style="background:#f1f5f9"><th style="text-align:left">소속</th><th>등록</th><th>대상</th><th>평균 이수율</th><th>필수 이수</th></tr></thead>'+
+   '<tbody>'+(rows||'<tr><td colspan="5">데이터 없음</td></tr>')+'</tbody></table>'+
+   '<p style="color:#64748b;font-size:12px">※ Firebase 실시간 데이터 기준 자동 생성.</p></div>';
+  MailApp.sendEmail({
+    to: ADMIN_EMAIL,
+    subject: '[주간보고] AI 역량강화 운영 현황 ('+new Date().toLocaleDateString('ko-KR')+')',
+    htmlBody: html
+  });
+  Logger.log('주간 보고서 발송 완료 → '+ADMIN_EMAIL);
+}
