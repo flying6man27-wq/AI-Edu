@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// ══════════════════════════════════════════════════════════════
+// AI 역량강화 시스템(ai-edu-seco) Firestore 보안 규칙  [하드닝 v2]
+//   변경 요지(2026-06-06):
+//   ▸ read  : if true → 인증 필요(signedIn). 익명 전량조회(개인정보 노출) 차단.
+//   ▸ delete: if true → 관리자(admin)만. 외부 삭제 차단.
+//   ▸ create/update: 학습포털·추천폼 기록이 끊기지 않도록 유지(차기: 익명인증+검증으로 추가 강화).
+//   배포: 이 파일 저장 후  firebase deploy --only firestore:rules
+// ══════════════════════════════════════════════════════════════
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    // 관리자 UID(대시보드 ADMIN_UID). 커스텀클레임 쓰면 request.auth.token.admin == true 로 교체.
+    function admin() { return signedIn() && request.auth.uid == 'VBqsJ1lPrmNiVzvKB60X4XPtOF23'; }
+
+    // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만, 기록(create/update)은 유지
+    match /learners/{docId} {
+      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow create, update: if true;          // 학습포털 진도 기록 유지(차기 강화)
+      allow delete:         if admin();       // ★ 삭제 관리자만
+    }
+
+    // AI챔피언 후보 추천 — 읽기 인증, 제출은 유지, 수정 관리자, 삭제 차단
+    match /champion_nominees/{docId} {
+      allow read:   if signedIn();            // ★ 후보 명단 익명조회 차단
+      allow create: if true;                  // 추천폼 제출 유지
+      allow update: if admin();
+      allow delete: if false;
+    }
+
+    // 오프라인 교육 출석 — 읽기 인증, 기록 유지, 수정 관리자, 삭제 차단
+    match /offline_attendance/{docId} {
+      allow read:   if signedIn();            // ★ 출석명단 익명조회 차단
+      allow create: if true;
+      allow update: if admin();
+      allow delete: if false;
+    }
+
+    // ops_snapshots — 일자별 집계 추이(개인정보 없음). 관리자만 읽기/쓰기.
+    match /ops_snapshots/{docId} {
+      allow read, write: if admin();
+    }
+
+    // 공개 집계 — 대표 보고서(report.html) 실시간 연동용
+    //   개인정보(이름·이메일) 미포함, 그룹·관계사별 '집계 수치'만 저장.
+    //   읽기는 공개(로그인 불필요), 쓰기(발행)는 관리자만.
+    match /public_stats/{docId} {
+      allow read:  if true;     // 집계만 공개 — PII 없음
+      allow write: if admin();  // ★ 발행은 관리자(대시보드)만
+    }
+
+    // 그 외 모든 경로는 기본 거부
+  }
+}

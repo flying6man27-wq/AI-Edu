@@ -321,6 +321,31 @@ tr:hover td{background:var(--bg);}
 .nm-em{font-size:11.5px;color:var(--gray);}
 .nm-open{margin-left:auto;background:var(--gold);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .nm-open.done{background:var(--green-dim);color:var(--green);}
+
+/* ── 운영관리 탭 ── */
+.ops-warn{background:var(--red-dim);border:1.5px solid var(--red);border-radius:11px;padding:13px 16px;font-size:12.5px;color:#8a1f17;line-height:1.7;margin-bottom:20px;}
+.ops-warn strong{color:var(--red);}
+.ops-add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.ops-input{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;}
+.ops-input:focus{border-color:var(--blue);}
+.ops-input.name{width:200px;}
+.ops-input.num{width:120px;}
+.ops-btn{padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .15s;font-family:var(--font);}
+.ops-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.ops-btn.primary:hover{opacity:.88;}
+.ops-btn.ghost{background:#fff;color:var(--text2);border-color:var(--border);}
+.ops-btn.ghost:hover{border-color:var(--blue);color:var(--blue);}
+.ops-btn.danger{background:#fff;color:var(--red);border-color:var(--red);}
+.ops-btn.danger:hover{background:var(--red-dim);}
+.ops-btn.sm{padding:5px 11px;font-size:11.5px;}
+.ops-co-target{width:84px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:var(--font);outline:none;text-align:right;}
+.ops-co-target:focus{border-color:var(--blue);}
+.ops-move-sel{padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none;cursor:pointer;background:#fff;}
+.ops-move-sel:focus{border-color:var(--blue);}
+.ops-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.ops-pill{font-size:11px;font-weight:700;background:var(--bg);color:var(--text2);padding:2px 8px;border-radius:10px;}
+.ops-saved{font-size:11.5px;color:var(--green);font-weight:700;margin-left:6px;opacity:0;transition:opacity .2s;}
+.ops-saved.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -362,6 +387,7 @@ tr:hover td{background:var(--bg);}
   <button class="tab-btn" onclick="switchTab('completion')" id="tab-completion">📋 수료관리 <span class="tab-count" id="cnt-completion">—</span></button>
   <button class="tab-btn" onclick="switchTab('monitor')" id="tab-monitor">🩺 운영모니터링 <span class="tab-count" id="cnt-monitor">—</span></button>
   <button class="tab-btn" onclick="switchTab('report')" id="tab-report">📑 주간보고서</button>
+  <button class="tab-btn" onclick="switchTab('ops')" id="tab-ops">🛠️ 운영관리</button>
 </div>
 
 <!-- MAIN WRAPPER -->
@@ -601,6 +627,43 @@ tr:hover td{background:var(--bg);}
 </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     TAB 7: 운영관리 (관계사·구성원 관리)
+══════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-ops">
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+    <h2 style="font-size:18px;font-weight:900;color:var(--text);">🛠️ 운영관리</h2>
+    <span id="opsMode" style="font-size:12px;color:var(--gray);"></span>
+  </div>
+  <div class="ops-warn">⚠️ <strong>주의:</strong> 이 탭의 변경은 실제 데이터에 즉시 반영됩니다. 관계사 추가·삭제 및 목표인원 수정은 <strong>companies</strong> 컬렉션에, 구성원 소속 이동·삭제는 <strong>learners</strong> 컬렉션에 저장됩니다. <strong>삭제는 되돌릴 수 없으니</strong> 신중히 진행하세요.</div>
+
+  <div class="section-title">🏢 관계사 관리</div>
+  <div class="table-box">
+    <div class="table-head" style="gap:8px;">
+      <div class="table-head-title">관계사 추가</div>
+      <div class="ops-add-row" style="margin:0;margin-left:auto;">
+        <input class="ops-input name" id="opsNewCoName" type="text" placeholder="새 관계사명">
+        <input class="ops-input num" id="opsNewCoTarget" type="number" min="0" placeholder="참여대상(명)">
+        <button class="ops-btn primary" onclick="opsAddCompany()">+ 관계사 추가</button>
+      </div>
+    </div>
+    <div id="opsCompanyWrap"><div class="loading"><div class="spinner"></div>로딩 중...</div></div>
+  </div>
+
+  <div class="section-title">👥 구성원 관리 (소속 이동 · 삭제)</div>
+  <div class="table-box">
+    <div class="table-head">
+      <div class="table-head-title">전체 구성원</div>
+      <select class="table-filter" id="opsFilterCompany" onchange="renderOpsMembers()"><option value="">전체 회사</option></select>
+      <input class="table-search" id="opsSearch" type="text" placeholder="이름·이메일 검색..." oninput="renderOpsMembers()">
+    </div>
+    <div id="opsMemberWrap"><div class="loading"><div class="spinner"></div>로딩 중...</div></div>
+  </div>
+  <div id="opsModal"></div>
+</div>
+</div>
+
 </div><!-- /mainPage -->
 
 <script>
@@ -621,7 +684,7 @@ const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
 // ── 비제조(임원+관리직) 교육 참여 대상 인원 ────────────────────────
 //   출처: 워크포스 인원변동현황(2026-03) · 생산직/현장기사/선원 제외.
 //   null = 인원 데이터 미확보. HR팀이 직접 수정 가능.
-const TARGET_HEADCOUNT = {
+const DEFAULT_TARGET_HEADCOUNT = {
   // 2026-05 인력현황 대시보드 기준 = 임원 + 사무직 (생산직·현장기사 제외)
   '좋은사람들': 143, '휴맥스해운항공': 37, '쌤앤파커스': 33, '연합': 37, // 대원티앤엠(10) 통합
   '인터렉스메가라인': 21, '미찌푸드': 19, '상일식품': 17,
@@ -629,8 +692,10 @@ const TARGET_HEADCOUNT = {
   // 아래 2개사는 인력현황 대시보드(9개 관계사)에 미포함 → 사용자 지정값(추후 확정)
   '인베스터유나이티드': 5, '세코글로벌': 5
 };
+let TARGET_HEADCOUNT = {...DEFAULT_TARGET_HEADCOUNT};
 const TARGET_BASIS = '임원+사무직 · 인력현황 2026-05 기준';
-const REPORT_COMPANIES = ['연합','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품','미찌푸드','우리인터텍스','인베스터유나이티드','세코글로벌'];
+const DEFAULT_REPORT_COMPANIES = ['연합','좋은사람들','휴맥스해운항공','쌤앤파커스','인터렉스메가라인','상일식품','미찌푸드','우리인터텍스','인베스터유나이티드','세코글로벌'];
+let REPORT_COMPANIES = [...DEFAULT_REPORT_COMPANIES];
 
 // ══════════════════════════════════════════════════════════════
 // 2. MODULE META
@@ -666,6 +731,56 @@ let allOffline = [];
 let demoMode = false;
 let activeOfflineTrack = '전체';
 let charts = {};
+
+// ── 관계사 레지스트리 (운영관리 탭에서 관리) ──────────────────────────
+// companyRegistry = [{name, target}] · target은 참여대상 인원(null이면 미정)
+let companyRegistry = [];
+const COMPANY_LS_KEY = 'ai_dash_companies_v1';
+
+// 레지스트리 → TARGET_HEADCOUNT / REPORT_COMPANIES 동기화 (기존 렌더 함수가 그대로 사용)
+function applyCompanyRegistry(){
+  const th = {};
+  companyRegistry.forEach(c=>{ th[c.name] = (c.target===''||c.target==null)?null:c.target; });
+  TARGET_HEADCOUNT = th;
+  REPORT_COMPANIES = companyRegistry.map(c=>c.name);
+}
+// 학습자 데이터 + 기본값으로 레지스트리 시드 구성
+function seedRegistryFromDefaults(){
+  const map = new Map();
+  Object.keys(DEFAULT_TARGET_HEADCOUNT).forEach(n=>map.set(n,{name:n,target:DEFAULT_TARGET_HEADCOUNT[n]}));
+  DEFAULT_REPORT_COMPANIES.forEach(n=>{ if(!map.has(n)) map.set(n,{name:n,target:null}); });
+  (allLearners||[]).forEach(l=>{ if(l.company && !map.has(l.company)) map.set(l.company,{name:l.company,target:null}); });
+  return [...map.values()];
+}
+// Firestore에서 관계사 목록 로드(없으면 시드 후 저장)
+function loadCompanyRegistry(){
+  if(!db || demoMode){
+    try{ const raw=localStorage.getItem(COMPANY_LS_KEY); if(raw){ companyRegistry=JSON.parse(raw); } }catch(_){}
+    if(!companyRegistry.length){ companyRegistry=seedRegistryFromDefaults(); persistCompanyRegistry(); }
+    applyCompanyRegistry(); return;
+  }
+  db.collection('companies').get().then(snap=>{
+    if(snap.empty){
+      companyRegistry = seedRegistryFromDefaults();
+      const batch=db.batch();
+      companyRegistry.forEach(c=>batch.set(db.collection('companies').doc(c.name),{name:c.name,target:c.target}));
+      batch.commit().catch(e=>console.warn('[companies seed]',e));
+    } else {
+      companyRegistry = snap.docs.map(d=>({name:d.id, target:(d.data().target!=null?d.data().target:null)}));
+    }
+    applyCompanyRegistry();
+    if(typeof renderOpsTab==='function') renderOpsTab();
+    if(document.getElementById('panel-overview')) onLearnersUpdated();
+  }).catch(e=>{
+    console.warn('[companies load]',e);
+    companyRegistry=seedRegistryFromDefaults(); applyCompanyRegistry();
+  });
+}
+function persistCompanyRegistry(){
+  if(!db || demoMode){
+    try{ localStorage.setItem(COMPANY_LS_KEY, JSON.stringify(companyRegistry)); }catch(_){}
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // 4. AUTH
@@ -713,6 +828,12 @@ function monSeconds(l){
   if(t._seconds != null) return t._seconds;
   const d = Date.parse(t); return isNaN(d) ? null : d/1000;
 }
+// 필수과정(M01~M04) 4개 모듈을 모두 이수한 '수료자' 여부.
+// 수료자는 자연히 접속이 뜸해지므로 '7일 미접속'·'독려 대상'에서 제외한다.
+function reqCourseDone(l){
+  return Array.isArray(REQUIRED_MODS) && REQUIRED_MODS.length>0 &&
+    REQUIRED_MODS.every(function(m){ return l && l.modules && l.modules[m.id] && l.modules[m.id].completed; });
+}
 function monTime(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 function renderMonitor(){
   if(!document.getElementById('monKpi')) return;
@@ -733,7 +854,7 @@ function renderMonitor(){
   rows.push(['오프라인 출석 오류', offErr===0?'이상 없음':('⚠ '+offErr+'건 오류'), offErr===0?'mon-ok':'mon-bad']); if(offErr>0) issues++;
   const intScore = Math.round((1-issues/6)*100);
   const weekAgo = Date.now()/1000 - 604800;
-  const inactive = L.filter(l=>{const sx=monSeconds(l); return sx!=null && sx<weekAgo;});
+  const inactive = L.filter(l=>{const sx=monSeconds(l); return sx!=null && sx<weekAgo && !reqCourseDone(l);});
   const notStarted = L.filter(l=>!(l.completionRate>0));
   const lowScore = L.filter(l=>{const ms=Object.values(l.modules||{}).filter(m=>m&&m.completed&&m.score); if(!ms.length) return false; const avg=ms.reduce((a,m)=>a+m.score,0)/ms.length; return avg>0&&avg<50;});
   let anomalies = 0; if(inactive.length>0) anomalies++; if(notStarted.length>total*0.3) anomalies++; if(lowScore.length>0) anomalies++;
@@ -753,7 +874,7 @@ function renderMonitor(){
   if(C.length>0){ alerts.push(['info','🏆 AI챔피언 후보 '+C.length+'명 접수','HR팀 검토가 필요합니다.']); }
   if(issues===0 && anomalies===0){ alerts.push(['ok','✅ 모든 점검 정상','정합성·이상감지 전 항목 이상 없음.']); }
   document.getElementById('monAlerts').innerHTML = alerts.map(a=>'<div class="mon-alert '+a[0]+'"><div class="t">'+a[1]+'</div><div class="d">'+a[2]+'</div></div>').join('');
-  const nudgeTargets=L.filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
+  const nudgeTargets=L.filter(l=>{ if(!l.email) return false; if(reqCourseDone(l)) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
   const ma=document.getElementById('monActions');
   if(ma){
     let html = nudgeTargets.length>0
@@ -840,14 +961,15 @@ function computeOpsSnapshot(){
   var reqDone=L.filter(function(l){return REQUIRED_MODS.every(function(m){return l.modules&&l.modules[m.id]&&l.modules[m.id].completed;});}).length;
   var reqRate=total?Math.round(reqDone/total*100):0;
   var weekAgo=Date.now()/1000-604800;
-  var inactive=L.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx<weekAgo;}).length;
+  var inactive=L.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx<weekAgo&&!reqCourseDone(l);}).length;
+  var reqDoneActive=L.filter(function(l){var sx=monSeconds(l);return reqCourseDone(l)&&sx!=null&&sx>=weekAgo;}).length;
   var notStarted=L.filter(function(l){return !(l.completionRate>0);}).length;
   var lowScore=L.filter(function(l){var ms=Object.values(l.modules||{}).filter(function(m){return m&&m.completed&&m.score;});if(!ms.length)return false;var avg=ms.reduce(function(a,m){return a+m.score;},0)/ms.length;return avg>0&&avg<50;}).length;
   var issues=0;
   if(L.filter(function(l){return !l.email||!l.company;}).length>0) issues++;
   var emails=L.map(function(l){return l.email;}).filter(Boolean); if(emails.length-new Set(emails).size>0) issues++;
   if(O.filter(function(o){return (o.attendedCount||0)>(o.targetCount||0);}).length>0) issues++;
-  return {date:new Date().toISOString().slice(0,10), total:total, sumT:sumT, regRate:regRate, avgCompletion:avgCompletion, reqDone:reqDone, reqRate:reqRate, inactive:inactive, notStarted:notStarted, lowScore:lowScore, champions:C.length, integrityIssues:issues};
+  return {date:new Date().toISOString().slice(0,10), total:total, sumT:sumT, regRate:regRate, avgCompletion:avgCompletion, reqDone:reqDone, reqRate:reqRate, reqDoneActive:reqDoneActive, inactive:inactive, notStarted:notStarted, lowScore:lowScore, champions:C.length, integrityIssues:issues};
 }
 function _writeSnapshot(snap){
   return db.collection('ops_snapshots').doc(snap.date).set(Object.assign({},snap,{ts:firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});
@@ -865,6 +987,76 @@ function saveSnapshotNow(){
 function loadOpsHistory(){
   if(!db) return;
   db.collection('ops_snapshots').orderBy('date').limit(180).get().then(function(s){ opsHistory=s.docs.map(function(d){return d.data();}); renderTrends(); }).catch(function(e){console.warn('[history]',e);});
+}
+
+// ══════════════════════════════════════════════════════════════
+// 공개 집계 발행 (report.html 실시간 연동용)
+//   ▸ 개인정보(이름·이메일) 미포함. 그룹·관계사별 '집계 수치'만 public_stats/latest 에 기록.
+//   ▸ 보안규칙: public_stats read=공개, write=admin. 대시보드(관리자 인증)만 발행.
+//   ▸ 데이터 변경 시 자동 발행(디바운스). 수동 발행은 publishPublicStats(true).
+// ══════════════════════════════════════════════════════════════
+function _quizAgg(ls){ var s=0,n=0; ls.forEach(function(l){ Object.values(l.modules||{}).forEach(function(m){ if(m&&m.completed&&m.score){s+=m.score;n++;} }); }); return {avg:n?Math.round(s/n):0,count:n}; }
+function computePublicStats(){
+  var L=allLearners||[], C=allChampions||[], O=allOffline||[];
+  var weekAgo=Date.now()/1000-604800;
+  var MIDS=MODULES.map(function(m){return m.id;});
+  var reqIds=REQUIRED_MODS.map(function(m){return m.id;});
+  var dataCos=[]; L.forEach(function(l){ if(l.company && dataCos.indexOf(l.company)<0) dataCos.push(l.company); });
+  var cos=REPORT_COMPANIES.slice(); dataCos.forEach(function(c){ if(cos.indexOf(c)<0) cos.push(c); });
+  var companies=cos.map(function(c){
+    var ls=L.filter(function(l){return l.company===c;});
+    var reg=ls.length;
+    var enr=ls.filter(function(l){return (l.completionRate||0)>0;}).length;
+    var avg=reg?Math.round(ls.reduce(function(s,l){return s+(l.completionRate||0);},0)/reg):0;
+    var t=TARGET_HEADCOUNT[c]; var hasT=(t!=null);
+    var active=ls.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx>weekAgo;}).length;
+    var reqDone=ls.filter(function(l){return reqIds.every(function(m){return l.modules&&l.modules[m]&&l.modules[m].completed;});}).length;
+    var notStarted=ls.filter(function(l){return !(l.completionRate>0);}).length;
+    var inactive=ls.filter(function(l){var sx=monSeconds(l);return (sx==null||sx<weekAgo)&&!reqCourseDone(l);}).length;
+    var dist={excellent:0,progress:0,low:0};
+    ls.forEach(function(l){var r=l.completionRate||0; if(r>=80)dist.excellent++; else if(r>=40)dist.progress++; else dist.low++;});
+    var heat={}; MIDS.forEach(function(m){ var cnt=ls.filter(function(l){return l.modules&&l.modules[m]&&l.modules[m].completed;}).length; heat[m]=reg?Math.round(cnt/reg*100):0; });
+    var chs=C.filter(function(x){return x.company===c;});
+    var offs=O.filter(function(x){return x.company===c;});
+    var q=_quizAgg(ls);
+    return {company:c, target:(hasT?t:null), registered:reg, enrolled:enr, avgCompletion:avg,
+      active7d:active, reqDone:reqDone, notStarted:notStarted, inactive:inactive, dist:dist, heat:heat,
+      championsTotal:chs.length, championsSelf:chs.filter(function(x){return x.type==='self';}).length,
+      championsRecommend:chs.filter(function(x){return x.type==='recommend';}).length,
+      championsAvailable:chs.filter(function(x){return x.available==='yes';}).length,
+      offlineAttended:offs.filter(function(x){return x.attended;}).length, offlineRecords:offs.length,
+      quizAvg:q.avg, quizCount:q.count};
+  });
+  var sumT=0,sumReg=0,sumEnr=0,nCo=0;
+  companies.forEach(function(c){ if(c.target!=null){ sumT+=c.target; sumReg+=c.registered; sumEnr+=c.enrolled; nCo++; }});
+  var gq=_quizAgg(L);
+  var group={ target:sumT, registered:sumReg, enrolled:sumEnr, companyCount:nCo,
+    regRate:sumT?Math.round(sumReg/sumT*100):0, enrRate:sumT?Math.round(sumEnr/sumT*100):0,
+    notRegistered:Math.max(sumT-sumReg,0),
+    reqDone:L.filter(function(l){return reqIds.every(function(m){return l.modules&&l.modules[m]&&l.modules[m].completed;});}).length,
+    championsTotal:C.length, offlineAttended:O.filter(function(x){return x.attended;}).length,
+    quizAvg:gq.avg, quizCount:gq.count, totalRecords:L.length };
+  return { schema:1, targetBasis:TARGET_BASIS, modules:MIDS, required:reqIds,
+    companies:companies, group:group, dataDate:new Date().toISOString().slice(0,10) };
+}
+var _pubTimer=null, _lastPubKey='';
+function publishPublicStats(force){
+  if(!db || demoMode) return;
+  if(!(allLearners && allLearners.length)) return;
+  var stats=computePublicStats();
+  var key=JSON.stringify(stats.group)+'|'+stats.companies.map(function(c){return c.company+':'+c.registered+'-'+c.enrolled+'-'+c.avgCompletion+'-'+c.active7d+'-'+c.reqDone;}).join(',');
+  if(!force && key===_lastPubKey) return;
+  _lastPubKey=key;
+  return db.collection('public_stats').doc('latest').set(Object.assign({},stats,{generatedAt:firebase.firestore.FieldValue.serverTimestamp()}))
+    .catch(function(e){console.warn('[publicStats]',e); _lastPubKey='';});
+}
+function schedulePublishStats(){ if(_pubTimer) clearTimeout(_pubTimer); _pubTimer=setTimeout(function(){ publishPublicStats(false); }, 5000); }
+function publishPublicStatsNow(){
+  if(!db){ alert('Firebase 미연결 상태에서는 발행할 수 없습니다.'); return; }
+  if(demoMode){ alert('데모 모드에서는 발행되지 않습니다.'); return; }
+  var p=publishPublicStats(true);
+  if(p) p.then(function(){ alert('대표 보고서(report.html) 집계를 발행했습니다.\n공개 보고서에 최신 현황이 반영됩니다.'); });
+  else alert('학습자 데이터 로드 후 발행할 수 있습니다.');
 }
 function _snapAt(daysBefore, refDate){
   var t=new Date(refDate+'T00:00:00'); t.setDate(t.getDate()-daysBefore);
@@ -891,6 +1083,8 @@ function renderTrends(){
       +'등록률 '+cur.regRate+'%'+_delta(cur.regRate,base.regRate)+'<br>'
       +'평균 이수율 '+cur.avgCompletion+'%'+_delta(cur.avgCompletion,base.avgCompletion)+'<br>'
       +'필수 이수율 '+cur.reqRate+'%'+_delta(cur.reqRate,base.reqRate)+'<br>'
+      +'수료자 '+cur.reqDone+'명'+_delta(cur.reqDone,base.reqDone)+'<br>'
+      +'활성 수료자 '+(cur.reqDoneActive==null?'집계 시작 전':cur.reqDoneActive+'명'+_delta(cur.reqDoneActive,base.reqDoneActive))+'<br>'
       +'7일 미접속 '+cur.inactive+'명'+_delta(cur.inactive,base.inactive)
       +'</div></div>';
   }
@@ -901,8 +1095,8 @@ function renderTrends(){
   try{ if(typeof destroyChart==='function') destroyChart('trendChart'); else if(charts.trendChart){ charts.trendChart.destroy(); } }catch(e){}
   charts.trendChart=new Chart(document.getElementById('trendChart'),{
     type:'line',
-    data:{labels:labels,datasets:[ds('regRate','등록률','#1660C8'),ds('avgCompletion','평균이수율','#1A9650'),ds('reqRate','필수이수율','#C8880A')]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{y:{max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#E8EAF0'}},x:{grid:{display:false}}}}
+    data:{labels:labels,datasets:[ds('regRate','등록률','#1660C8'),ds('avgCompletion','평균이수율','#1A9650'),ds('reqRate','필수이수율','#C8880A'),{label:'수료자(명)',data:opsHistory.map(function(s){return s.reqDone;}),borderColor:'#7A3FF2',backgroundColor:'#7A3FF222',tension:.3,pointRadius:2,fill:false,yAxisID:'y1',borderDash:[5,3]},{label:'활성 수료자(명)',data:opsHistory.map(function(s){return s.reqDoneActive==null?null:s.reqDoneActive;}),borderColor:'#0EA5A5',backgroundColor:'#0EA5A522',tension:.3,pointRadius:2,fill:false,yAxisID:'y1',borderDash:[2,2]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{y:{max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#E8EAF0'}},y1:{position:'right',beginAtZero:true,grid:{display:false},title:{display:true,text:'수료자(명)',font:{size:10}},ticks:{font:{size:10}}},x:{grid:{display:false}}}}
   });
 }
 
@@ -1016,6 +1210,7 @@ function switchTab(name) {
   if (name==='champion') { renderChampionCharts(); }
   if (name==='report') { populateRptCompany(); renderReportTab(); }
   if (name==='monitor') { renderMonitor(); renderTrends(); }
+  if (name==='ops') { renderOpsTab(); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1078,6 +1273,7 @@ function initDashboard() {
       onOfflineUpdated();
     });
     loadOpsHistory();
+    loadCompanyRegistry();
   } catch(e) {
     console.error(e); activateDemoMode();
   }
@@ -1091,6 +1287,7 @@ function activateDemoMode() {
   allLearners = generateDemoData();
   allChampions = generateDemoChampions();
   allOffline = generateDemoOffline();
+  loadCompanyRegistry();
   onLearnersUpdated();
   onChampionsUpdated();
   onOfflineUpdated();
@@ -1124,7 +1321,9 @@ function onLearnersUpdated() {
   populateCompFilter();
   renderCompletionTable();
   renderMonitor();
+  if(typeof renderOpsTab==='function') renderOpsTab();
   setTimeout(saveSnapshotIfNeeded, 4000);
+  schedulePublishStats();
   // 데이터 로드 후 1회 진도 자동 보정(에이전트 무인 조치) — 올려쓰기만, 멱등
   if(db && !demoMode && !_autoCorrected && allLearners.length){ _autoCorrected=true; setTimeout(function(){ autoCorrectProgress(true); }, 4500); }
   if (document.getElementById('panel-report') && document.getElementById('panel-report').classList.contains('active')) {
@@ -1135,6 +1334,7 @@ function onChampionsUpdated() {
   updateTabCounts();
   renderChampionSection();
   renderMonitor();
+  schedulePublishStats();
 }
 function onOfflineUpdated() {
   updateTabCounts();
@@ -1143,6 +1343,7 @@ function onOfflineUpdated() {
   populateOfflineFilter();
   renderOfflineTable();
   renderMonitor();
+  schedulePublishStats();
 }
 
 function updateTabCounts() {
@@ -1778,6 +1979,195 @@ function renderRptGroup(){
 }
 
 function printReport(){document.body.classList.add('print-report');window.print();setTimeout(()=>document.body.classList.remove('print-report'),600);}
+
+// ══════════════════════════════════════════════════════════════
+// 운영관리 탭 (관계사·구성원 관리)
+// ══════════════════════════════════════════════════════════════
+function opsAllCompanyNames(){
+  const set=new Set(companyRegistry.map(c=>c.name));
+  (allLearners||[]).forEach(l=>{ if(l.company) set.add(l.company); });
+  return [...set].sort((a,b)=>a.localeCompare(b,'ko'));
+}
+function renderOpsTab(){
+  if(!document.getElementById('panel-ops')) return;
+  const om=document.getElementById('opsMode');
+  if(om) om.textContent = demoMode ? '데모 모드 — 변경은 이 브라우저에만 임시 저장됩니다'
+                                   : 'Firebase 실시간 — 변경 사항이 즉시 저장됩니다';
+  renderOpsCompanies();
+  populateOpsFilter();
+  renderOpsMembers();
+}
+
+// ── 관계사 목록 ──
+function renderOpsCompanies(){
+  const wrap=document.getElementById('opsCompanyWrap'); if(!wrap) return;
+  if(!companyRegistry.length){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">🏢</div><div class="empty-msg">등록된 관계사가 없습니다</div><div class="empty-sub">위에서 관계사를 추가하세요</div></div>';
+    return;
+  }
+  const list=companyRegistry.slice().sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const rows=list.map(c=>{
+    const reg=(allLearners||[]).filter(l=>l.company===c.name).length;
+    const tval=(c.target==null?'':c.target);
+    const regR=(c.target?Math.round(reg/c.target*100)+'%':'<span style="color:var(--gray)">—</span>');
+    return `<tr>
+      <td class="td-name">${c.name}</td>
+      <td><input class="ops-co-target" type="number" min="0" value="${tval}" data-target-for="${c.name}"> <span style="font-size:11px;color:var(--gray);">명</span></td>
+      <td>${reg}명</td>
+      <td>${regR}</td>
+      <td class="ops-actions">
+        <button class="ops-btn ghost sm" data-save-co="${c.name}">목표 저장</button>
+        <button class="ops-btn danger sm" data-del-co="${c.name}">삭제</button>
+        <span class="ops-saved" data-saved-co="${c.name}">✓ 저장됨</span>
+      </td></tr>`;
+  }).join('');
+  wrap.innerHTML=`<table><thead><tr><th>관계사</th><th>참여대상(목표)</th><th>등록 인원</th><th>등록률</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('[data-save-co]').forEach(b=>b.addEventListener('click',()=>opsSaveTarget(b.dataset.saveCo)));
+  wrap.querySelectorAll('[data-del-co]').forEach(b=>b.addEventListener('click',()=>opsDeleteCompany(b.dataset.delCo)));
+}
+function opsAddCompany(){
+  const ni=document.getElementById('opsNewCoName'), ti=document.getElementById('opsNewCoTarget');
+  const name=(ni.value||'').trim();
+  if(!name){ alert('관계사명을 입력하세요.'); ni.focus(); return; }
+  if(companyRegistry.some(c=>c.name===name)){ alert('이미 존재하는 관계사입니다.'); return; }
+  const tv=(ti.value||'').trim();
+  const target = tv==='' ? null : Math.max(0, parseInt(tv,10)||0);
+  companyRegistry.push({name, target});
+  applyCompanyRegistry(); persistCompanyRegistry();
+  if(db && !demoMode){ db.collection('companies').doc(name).set({name, target}).catch(e=>alert('저장 실패: '+e.message)); }
+  ni.value=''; ti.value='';
+  opsPropagate();
+}
+function opsSaveTarget(name){
+  const inp=document.querySelector('.ops-co-target[data-target-for="'+CSS.escape(name)+'"]');
+  if(!inp) return;
+  const tv=(inp.value||'').trim();
+  const target = tv==='' ? null : Math.max(0, parseInt(tv,10)||0);
+  const c=companyRegistry.find(x=>x.name===name); if(c) c.target=target;
+  applyCompanyRegistry(); persistCompanyRegistry();
+  if(db && !demoMode){ db.collection('companies').doc(name).set({name, target},{merge:true}).catch(e=>alert('저장 실패: '+e.message)); }
+  const s=document.querySelector('.ops-saved[data-saved-co="'+CSS.escape(name)+'"]');
+  if(s){ s.classList.add('show'); setTimeout(()=>s.classList.remove('show'),1500); }
+  renderKPI(); renderMonitor(); renderOpsCompanies();
+}
+function opsDeleteCompany(name){
+  const reg=(allLearners||[]).filter(l=>l.company===name).length;
+  if(reg>0){ alert('"'+name+'"에 소속된 구성원이 '+reg+'명 있습니다.\n\n먼저 아래 [구성원 관리]에서 이 관계사 소속 인원을 다른 회사로 옮기거나 삭제한 뒤 관계사를 삭제하세요.'); return; }
+  if(!confirm('관계사 "'+name+'"을(를) 삭제할까요?\n되돌릴 수 없습니다.')) return;
+  companyRegistry=companyRegistry.filter(c=>c.name!==name);
+  applyCompanyRegistry(); persistCompanyRegistry();
+  if(db && !demoMode){ db.collection('companies').doc(name).delete().catch(e=>alert('삭제 실패: '+e.message)); }
+  opsPropagate();
+}
+// 관계사 변경 후 의존 화면 갱신
+function opsPropagate(){
+  applyCompanyRegistry();
+  renderKPI(); renderMonitor();
+  const rp=document.getElementById('panel-report');
+  if(rp && rp.classList.contains('active')){ populateRptCompany(); renderReportTab(); }
+  renderOpsTab();
+}
+
+// ── 구성원 목록 ──
+function populateOpsFilter(){
+  const sel=document.getElementById('opsFilterCompany'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">전체 회사</option>'+opsAllCompanyNames().map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+}
+function renderOpsMembers(){
+  const wrap=document.getElementById('opsMemberWrap'); if(!wrap) return;
+  const search=((document.getElementById('opsSearch')||{}).value||'').toLowerCase();
+  const co=((document.getElementById('opsFilterCompany')||{}).value)||'';
+  let rows=(allLearners||[]).filter(l=>{
+    if(co && l.company!==co) return false;
+    if(search && !((l.name||'').toLowerCase().includes(search)||(l.email||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+  if(!rows.length){ wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-msg">구성원이 없습니다</div></div>'; return; }
+  rows.sort((a,b)=>((a.company||'').localeCompare(b.company||'','ko'))||((a.name||'').localeCompare(b.name||'','ko')));
+  const names=opsAllCompanyNames();
+  const tbody=rows.map(l=>{
+    const idx=allLearners.indexOf(l);
+    const opts=names.map(n=>`<option value="${n}" ${n===l.company?'selected':''}>${n}</option>`).join('');
+    return `<tr>
+      <td class="td-name">${l.name||'—'}</td>
+      <td style="font-size:12px;color:var(--gray);">${l.email||'—'}</td>
+      <td><span class="td-company">${l.company||'—'}</span></td>
+      <td style="font-size:12px;">${l.eduTrack||'—'}</td>
+      <td class="ops-actions">
+        <select class="ops-move-sel" data-move-idx="${idx}" title="소속 변경">${opts}</select>
+        <button class="ops-btn ghost sm" data-edit-idx="${idx}">✏️ 수정</button>
+        <button class="ops-btn ghost sm" data-reset-idx="${idx}">↺ 진도초기화</button>
+        <button class="ops-btn danger sm" data-del-idx="${idx}">삭제</button>
+      </td></tr>`;
+  }).join('');
+  wrap.innerHTML=`<table><thead><tr><th>이름</th><th>이메일</th><th>현재 소속</th><th>트랙</th><th style="min-width:200px;">소속 변경 / 삭제</th></tr></thead><tbody>${tbody}</tbody></table>`;
+  wrap.querySelectorAll('[data-move-idx]').forEach(s=>s.addEventListener('change',()=>opsMoveMember(+s.dataset.moveIdx, s.value)));
+  wrap.querySelectorAll('[data-edit-idx]').forEach(b=>b.addEventListener('click',()=>opsEditMember(+b.dataset.editIdx)));
+  wrap.querySelectorAll('[data-reset-idx]').forEach(b=>b.addEventListener('click',()=>opsResetProgress(+b.dataset.resetIdx)));
+  wrap.querySelectorAll('[data-del-idx]').forEach(b=>b.addEventListener('click',()=>opsDeleteMember(+b.dataset.delIdx)));
+}
+function opsMoveMember(idx, newCo){
+  const l=allLearners[idx]; if(!l) return;
+  if(newCo===l.company){ return; }
+  const old=l.company||'(미지정)';
+  if(!confirm('"'+(l.name||'(이름없음)')+'" 님의 소속을\n'+old+' → '+newCo+' (으)로 변경할까요?')){ renderOpsMembers(); return; }
+  l.company=newCo;
+  if(db && !demoMode && l.id){ db.collection('learners').doc(l.id).update({company:newCo}).catch(e=>{ alert('변경 실패: '+e.message); }); }
+  refreshAfterMemberChange();
+}
+function opsDeleteMember(idx){
+  const l=allLearners[idx]; if(!l) return;
+  if(!confirm('구성원 "'+(l.name||'(이름없음)')+'" ('+(l.email||'-')+')을(를) 삭제할까요?\n\n학습 기록이 함께 삭제되며 되돌릴 수 없습니다.')) return;
+  if(db && !demoMode && l.id){ db.collection('learners').doc(l.id).delete().catch(e=>{ alert('삭제 실패: '+e.message); }); }
+  allLearners.splice(idx,1);
+  refreshAfterMemberChange();
+}
+function opsResetProgress(idx){
+  const l=allLearners[idx]; if(!l) return;
+  if(!confirm('"'+(l.name||'(이름없음)')+'" 님의 학습 진도를 초기화할까요?\n\n이수율·완료 모듈 기록이 0으로 초기화됩니다. (계정은 유지)')) return;
+  l.completionRate=0; l.completedCount=0; l.modules={};
+  if(db && !demoMode && l.id){ db.collection('learners').doc(l.id).update({completionRate:0, completedCount:0, modules:{}}).catch(e=>{ alert('초기화 실패: '+e.message); }); }
+  refreshAfterMemberChange();
+}
+function refreshAfterMemberChange(){
+  onLearnersUpdated();   // KPI·차트·표·모니터링 전체 재계산
+  renderOpsTab();
+}
+// ── 구성원 아이디(이메일)·이름 수정 ──
+function opsCloseModal(){ const m=document.getElementById('opsModal'); if(m) m.innerHTML=''; }
+function opsEditMember(idx){
+  const l=allLearners[idx]; if(!l) return;
+  const host=document.getElementById('opsModal'); if(!host) return;
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  host.innerHTML='<div class="nm-overlay" onclick="if(event.target===this)opsCloseModal()"><div class="nm-card" style="width:min(440px,94vw);">'
+    +'<div class="nm-head"><div class="nm-title">✏️ 구성원 정보 수정</div><button class="nm-close" onclick="opsCloseModal()">✕</button></div>'
+    +'<div class="nm-body">'
+    +'<div style="font-size:11.5px;color:var(--gray);margin-bottom:4px;font-weight:700;">이름</div>'
+    +'<input class="ops-input" id="opsEditName" style="width:100%;margin-bottom:14px;" type="text" value="'+esc(l.name)+'">'
+    +'<div style="font-size:11.5px;color:var(--gray);margin-bottom:4px;font-weight:700;">아이디 (이메일)</div>'
+    +'<input class="ops-input" id="opsEditEmail" style="width:100%;margin-bottom:6px;" type="email" value="'+esc(l.email)+'" placeholder="name@company.com">'
+    +'<div class="nm-hint" style="margin:6px 0 14px;">• 아이디는 포털 <b>로그인 이메일</b>입니다. 변경 시 본인에게 새 이메일을 안내해 주세요.<br>• 학습 기록(진도·점수)은 그대로 유지됩니다.</div>'
+    +'<button class="nm-bcc" onclick="opsSaveMemberEdit('+idx+')">저장</button>'
+    +'</div></div></div>';
+  setTimeout(()=>{ const n=document.getElementById('opsEditName'); if(n) n.focus(); },50);
+}
+function opsSaveMemberEdit(idx){
+  const l=allLearners[idx]; if(!l) return;
+  const name=(document.getElementById('opsEditName').value||'').trim();
+  const email=(document.getElementById('opsEditEmail').value||'').trim();
+  if(!name){ alert('이름을 입력하세요.'); return; }
+  if(!email){ alert('아이디(이메일)를 입력하세요.'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ alert('이메일 형식이 올바르지 않습니다.'); return; }
+  const dup=(allLearners||[]).some((x,i)=>i!==idx && (x.email||'').toLowerCase()===email.toLowerCase());
+  if(dup){ alert('이미 다른 구성원이 사용 중인 이메일입니다.'); return; }
+  const changed = (name!==l.name)||(email!==l.email);
+  if(!changed){ opsCloseModal(); return; }
+  l.name=name; l.email=email;
+  if(db && !demoMode && l.id){ db.collection('learners').doc(l.id).update({name:name, email:email}).catch(e=>alert('저장 실패: '+e.message)); }
+  opsCloseModal();
+  refreshAfterMemberChange();
+}
 
 ensureFirebaseApp();
 firebase.auth().onAuthStateChanged((u)=>{
