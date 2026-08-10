@@ -5,15 +5,21 @@
 //  자동 생성 : 2026-07-29
 //
 //  ── 실행 순서 ─────────────────────────────────────────────
+//   0) ★ 발송 전 필수 : PORTAL_URL 을 브라우저로 직접 열어 정상 동작 확인
+//         (대시보드 온보딩 탭이 "학습자 0명 / 전 모듈 0%"이면 미배포 가능성.
+//          죽은 링크를 신규입사자에게 보내는 것이 가장 큰 리스크입니다)
 //   1) sendTest()           본인에게 1건 시험발송 (대상자에게 안 나감)
-//   2) createDraftsPilot()  파일럿 6명 초안만 생성 → 임시보관함 확인
-//   3) sendPilot()          파일럿 6명 실제 발송  ★ 이번 시행
-//   4) sendOthers()         나머지 신규채용 7명   (파일럿 결과 확인 후)
-//   5) sendTransfer()       관계사전속 5명        (발송 여부 판단 후)
+//   2) draftOne(0)          특정 1명 초안 생성 — 1명 실험용
+//   3) sendOne(0)           특정 1명만 실제 발송 — 1명 실험용
+//   4) createDraftsPilot()  파일럿 6명 초안만 생성 → 임시보관함 확인
+//   5) sendPilot()          파일럿 6명 실제 발송
+//   6) sendOthers()         나머지 신규채용 7명   (파일럿 결과 확인 후)
+//   7) sendTransfer()       관계사전속 5명        (발송 여부 판단 후)
 // ══════════════════════════════════════════════════════════════
 
 var PORTAL_URL = 'https://ai-edu-seco.web.app/onboarding/';
-var DEADLINE   = '2026년 8월 8일(금)';
+// 2026-08-08 은 토요일이므로 금요일인 8/7 로 정정. 토요일 마감 의도였다면 '(토)'로 수정.
+var DEADLINE   = '2026년 8월 7일(금)';
 var SUBJECT    = '[SECO] 신규입사자 온보딩 자가학습 안내';
 var TEST_EMAIL = 'flying6man27@gmail.com';
 
@@ -108,6 +114,21 @@ function _drafts(list, label) {
     Logger.log('초안 ' + r.name + ' (' + r.org + ') <' + r.email + '>');
   }
   Logger.log('[' + label + '] 초안 ' + list.length + '건 생성 — Gmail 임시보관함 확인');
+}
+
+// ── 1명 실험용 ───────────────────────────────────────────────
+//  draftOne(0) → PILOT[0](이지수) 초안 1건만 생성. 임시보관함에서 확인 후 직접 발송.
+//  sendOne(0)  → PILOT[0] 에게 즉시 1건 발송.
+//  대상 목록을 바꾸려면 두 번째 인자로 OTHERS / TRANSFER 를 넘기세요. 예: draftOne(2, OTHERS)
+function draftOne(index, list) {
+  var r = (list || PILOT)[index || 0];
+  GmailApp.createDraft(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+  Logger.log('초안 1건 생성 → ' + r.name + ' (' + r.org + ') <' + r.email + '>');
+}
+function sendOne(index, list) {
+  var r = (list || PILOT)[index || 0];
+  GmailApp.sendEmail(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+  Logger.log('발송 1건 → ' + r.name + ' (' + r.org + ') <' + r.email + '>');
 }
 
 // ── 실행 함수 ────────────────────────────────────────────────
