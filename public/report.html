@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 역량강화 주간 성과 보고서 (대표 보고용)</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#1660C8;--green:#1A9650;--gold:#C8880A;--purple:#6432B8;--red:#D93025;
+  --green-dim:rgba(26,150,80,.1);--gold-dim:rgba(200,136,10,.1);--red-dim:rgba(217,48,37,.1);--blue-dim:rgba(22,96,200,.06);
+  --text:#12122A;--text2:#38385C;--gray:#7A7A9A;--border:#D8DCF0;--bg:#F0F2F8;
+  --font:'Apple SD Gothic Neo','Noto Sans KR','맑은 고딕',sans-serif;
+}
+body{font-family:var(--font);background:#F0F2F8;color:var(--text);-webkit-font-smoothing:antialiased;word-break:keep-all;}
+.loading{position:fixed;inset:0;background:linear-gradient(135deg,#1660C8,#6432B8);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;gap:18px;}
+.loading.hidden{display:none;}
+.spin{width:38px;height:38px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.wrap{max-width:920px;margin:0 auto;padding:24px 18px 60px;}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+.toolbar select{font-family:var(--font);font-size:13px;font-weight:700;padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;background:#fff;color:var(--text);}
+.print-btn{margin-left:auto;background:var(--blue);color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);}
+.print-btn:hover{filter:brightness(1.08);}
+.hd{background:linear-gradient(135deg,#1660C8 0%,#6432B8 100%);border-radius:16px;padding:24px 28px;color:#fff;margin-bottom:18px;position:relative;overflow:hidden;}
+.hd::before{content:'';position:absolute;top:-40px;right:-30px;width:180px;height:180px;background:rgba(255,255,255,.07);border-radius:50%;}
+.hd-badge{display:inline-block;background:rgba(255,255,255,.2);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:8px;}
+.hd-co{font-size:24px;font-weight:900;position:relative;}
+.hd-t{font-size:13px;opacity:.85;margin-top:2px;position:relative;}
+.hd-meta{position:absolute;top:24px;right:28px;text-align:right;font-size:12px;opacity:.85;line-height:1.5;}
+.sec{font-size:12px;font-weight:900;color:var(--text2);letter-spacing:.3px;margin:18px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--border);}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kpi{background:#fff;border:1.5px solid var(--border);border-radius:13px;padding:15px 14px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,var(--blue));}
+.kpi-l{font-size:10.5px;font-weight:700;color:var(--gray);margin-bottom:5px;}
+.kpi-v{font-size:25px;font-weight:900;line-height:1;color:var(--text);}
+.kpi-u{font-size:13px;font-weight:700;color:var(--gray);margin-left:2px;}
+.kpi-s{font-size:10px;color:var(--gray);margin-top:4px;}
+.kpi-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;}
+.kpi-bar>i{display:block;height:100%;background:var(--c,var(--blue));}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.card{background:#fff;border:1.5px solid var(--border);border-radius:13px;padding:16px;}
+.card-t{font-size:13px;font-weight:800;margin-bottom:3px;color:var(--text);}
+.card-s{font-size:11px;color:var(--gray);margin-bottom:12px;}
+.prog{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bg);}
+.prog:last-child{border-bottom:none;}
+.prog-n{font-size:12px;font-weight:700;min-width:62px;color:var(--text);}
+.prog-w{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.prog-w>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--green));}
+.prog-p{font-size:11px;font-weight:700;color:var(--text2);min-width:34px;text-align:right;}
+.bdg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap;}
+.bdg.done{background:var(--green-dim);color:var(--green);}
+.bdg.mid{background:var(--gold-dim);color:var(--gold);}
+.bdg.low{background:var(--red-dim);color:var(--red);}
+.heat{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.hc{border-radius:5px;padding:6px 3px;text-align:center;color:#fff;}
+.hc b{font-size:9px;font-weight:800;display:block;}
+.hc span{font-size:10px;font-weight:900;display:block;}
+.active{margin-top:14px;font-size:13px;font-weight:700;color:var(--blue);}
+.hls{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.hl{background:linear-gradient(135deg,rgba(22,96,200,.06),rgba(100,50,184,.06));border:1.5px solid rgba(22,96,200,.15);border-radius:11px;padding:13px;}
+.hl-i{font-size:20px;}
+.hl-t{font-size:12.5px;font-weight:800;margin-top:4px;color:var(--text);}
+.hl-s{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;}
+.steps{display:flex;flex-direction:column;gap:8px;}
+.step{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:9px;font-size:12px;}
+.step-n{width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-t{color:var(--text2);font-weight:600;}
+.step-d{margin-left:auto;font-size:10.5px;color:var(--gray);font-weight:600;white-space:nowrap;}
+.dist{display:flex;flex-direction:column;gap:9px;}
+.dist-row{display:flex;align-items:center;gap:9px;}
+.dist-l{font-size:11.5px;font-weight:700;min-width:54px;}
+.dist-w{flex:1;height:9px;background:var(--border);border-radius:5px;overflow:hidden;}
+.dist-w>i{display:block;height:100%;border-radius:5px;}
+.dist-v{font-size:11.5px;font-weight:800;min-width:46px;text-align:right;color:var(--text2);}
+.gsum{width:100%;border-collapse:collapse;}
+.gsum th{font-size:10.5px;font-weight:800;color:var(--gray);text-align:right;padding:8px;background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap;}
+.gsum th:first-child{text-align:left;}
+.gsum td{font-size:12px;color:var(--text2);padding:8px;border-bottom:1px solid var(--bg);text-align:right;white-space:nowrap;}
+.gsum td:first-child{text-align:left;font-weight:700;color:var(--text);}
+.gsum tbody tr:hover td{background:var(--blue-dim);cursor:pointer;}
+.gsum tr.tot td{font-weight:900;color:var(--text);background:var(--bg);border-top:2px solid var(--border);}
+.gbar{display:inline-block;width:54px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;vertical-align:middle;margin-right:6px;}
+.gbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--green));}
+.na{color:var(--gray);font-size:10.5px;}
+.empty{text-align:center;padding:26px;color:var(--gray);}
+.empty .i{font-size:28px;}
+.foot{text-align:center;font-size:11px;color:var(--gray);margin-top:28px;padding-top:16px;border-top:1px solid var(--border);}
+@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr);}.grid2{grid-template-columns:1fr;}.hls{grid-template-columns:1fr;}.hd-meta{position:static;text-align:left;margin-top:8px;}}
+@media print{
+  body{background:#fff;}
+  .toolbar{display:none!important;}
+  .hd,.kpi,.card,.hl,.hc,.step{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .kpis,.grid2,.hls{break-inside:avoid;}
+  @page{size:A4;margin:14mm 12mm;}
+}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading"><div class="spin"></div><div>실시간 데이터 불러오는 중...</div></div>
+
+<div class="wrap" id="wrap" style="display:none;">
+  <div class="toolbar">
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">관계사</label>
+    <select id="coSel" onchange="render()"></select>
+    <button class="print-btn" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+  </div>
+  <div id="body"></div>
+  <div class="foot">본 보고서는 AI 역량강화 관리 시스템의 <b>공개 집계(개인정보 미포함)</b>를 실시간으로 읽어 자동 생성됩니다 · HR 인사팀<br><span id="genTime"></span></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 대표 보고서 (report.html)
+//   - 개인정보 보호: learners 원본을 직접 읽지 않고, 관리자 대시보드가 발행한
+//     public_stats/latest(집계, PII 없음)만 실시간 구독한다.
+//   - 보안규칙: public_stats read=공개. 로그인 없이 열람 가능.
+// ══════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
+  authDomain:"ai-edu-seco.firebaseapp.com",
+  projectId:"ai-edu-seco",
+  storageBucket:"ai-edu-seco.firebasestorage.app",
+  messagingSenderId:"58934449948",
+  appId:"1:58934449948:web:216a4d0adf255083bbccd9"
+};
+const MODULES=['M01','M02','M03','M04','M05','M06','M07','M08','M09','M10','M11','M12','M13','M14','M15'];
+const COLORS=['#1660C8','#1A9650','#6432B8','#C8880A','#D93025','#0097A7','#E65100','#37474F','#558B2F','#6A1B9A'];
+
+let STATS=null;
+let loaded=false;
+
+window.addEventListener('DOMContentLoaded', init);
+function init(){
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const db=firebase.firestore();
+    const show=()=>{ document.getElementById('loading').classList.add('hidden'); document.getElementById('wrap').style.display='block'; populate(); render(); };
+    db.collection('public_stats').doc('latest').onSnapshot(d=>{
+      STATS=d.exists?d.data():null; loaded=true; show();
+    }, e=>{ console.warn(e); loaded=true; STATS=null; show(); });
+    setTimeout(()=>{ if(!loaded) show(); }, 4000);
+  }catch(e){ console.warn(e); document.getElementById('loading').classList.add('hidden'); document.getElementById('wrap').style.display='block'; populate(); render(); }
+}
+
+function mods(){ return (STATS&&STATS.modules&&STATS.modules.length)?STATS.modules:MODULES; }
+function companies(){ return (STATS&&STATS.companies)?STATS.companies:[]; }
+function coByName(c){ return companies().filter(x=>x.company===c)[0]||null; }
+function fmtGen(){
+  if(!STATS||!STATS.generatedAt) return STATS?('기준일 '+(STATS.dataDate||'')):'';
+  const t=STATS.generatedAt; const ms=(t.seconds!=null)?t.seconds*1000:(t._seconds!=null?t._seconds*1000:Date.parse(t));
+  if(isNaN(ms)) return '기준일 '+(STATS.dataDate||'');
+  const d=new Date(ms);
+  return '기준 시각 '+d.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+function populate(){
+  const sel=document.getElementById('coSel'); if(!sel) return;
+  const prev=sel.value;
+  const cos=companies().map(c=>c.company);
+  sel.innerHTML='<option value="__ALL__">🏢 전체 관계사 요약</option>'+cos.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value=prev||'__ALL__';
+  const gt=document.getElementById('genTime'); if(gt) gt.textContent=fmtGen();
+}
+function selectCo(c){const s=document.getElementById('coSel');s.value=c;render();}
+function render(){
+  const sel=document.getElementById('coSel'); if(!sel) return;
+  if(!STATS){ document.getElementById('body').innerHTML='<div class="empty"><div class="i">⏳</div><div>아직 발행된 집계가 없습니다.<br>관리자 대시보드에 접속하면 최신 현황이 자동 발행됩니다.</div></div>'; return; }
+  const co=sel.value||'__ALL__';
+  if(co==='__ALL__') renderGroup(); else renderCompany(co);
+}
+
+function kCard(c,label,val,unit,sub,pct){return `<div class="kpi" style="--c:var(${c})"><div class="kpi-l">${label}</div><div class="kpi-v">${val}<span class="kpi-u">${unit}</span></div><div class="kpi-s">${sub}</div><div class="kpi-bar"><i style="width:${Math.min(Math.round(pct),100)}%"></i></div></div>`;}
+function modColor(m){const i=mods().indexOf(m);return i<4?'#1660C8':i<8?'#1A9650':i<11?'#6432B8':'#C8880A';}
+function hexA(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+function weekRange(d){const day=d.getDay()||7;const mon=new Date(d);mon.setDate(d.getDate()-(day-1));const sun=new Date(mon);sun.setDate(mon.getDate()+6);const f=x=>`${x.getMonth()+1}.${x.getDate()}`;return `${mon.getFullYear()}.${f(mon)}~${f(sun)}`;}
+
+function renderCompany(co){
+  const c=coByName(co)||{};
+  const reg=c.registered||0, enr=c.enrolled||0, avg=c.avgCompletion||0;
+  const t=c.target; const hasT=(t!=null);
+  const regR=hasT&&t?Math.round(reg/t*100):0;
+  const enrR=hasT&&t?Math.round(enr/t*100):0;
+  const now=new Date();
+  const kpis=
+    kCard('--blue','참여 대상',hasT?t:'—','명',hasT?STATS.targetBasis:'인원 데이터 미확보',hasT?100:0)+
+    kCard('--green','등록 인원',reg,'명',hasT?`등록률 ${regR}% · 대상 ${t}명 중`:'등록 인원',regR)+
+    kCard('--gold','수강 중',enr,'명',hasT?`수강률 ${enrR}% · 대상 ${t}명 중`:'1개+ 모듈 진행',enrR)+
+    kCard('--purple','평균 이수율',avg,'%','등록자 기준 · 목표 80%',Math.min(avg/80*100,100));
+
+  let prog;
+  if(!reg) prog='<div class="empty"><div class="i">📭</div><div>아직 등록한 학습자가 없습니다 (0명)</div></div>';
+  else {
+    const d=c.dist||{excellent:0,progress:0,low:0};
+    const row=(label,val,color)=>{const p=reg?Math.round(val/reg*100):0;return `<div class="dist-row"><div class="dist-l" style="color:${color}">${label}</div><div class="dist-w"><i style="width:${p}%;background:${color}"></i></div><div class="dist-v">${val}명 · ${p}%</div></div>`;};
+    prog='<div class="dist">'+
+      row('우수',d.excellent||0,'var(--green)')+
+      row('진행중',d.progress||0,'var(--gold)')+
+      row('미흡',d.low||0,'var(--red)')+
+      '</div>';
+  }
+  const heatMap=c.heat||{};
+  const heat=mods().map(m=>{const pct=heatMap[m]||0;return `<div class="hc" style="background:${hexA(modColor(m),0.2+(pct/100)*0.8)}" title="${m}: ${pct}%"><b>${m}</b><span>${pct}%</span></div>`;}).join('');
+  const active=c.active7d||0;
+  const actPct=reg?Math.round(active/reg*100):0;
+  const hls=highlights(c,reg);
+  const steps=nextSteps(c);
+  document.getElementById('body').innerHTML=`
+  <div class="hd"><div class="hd-meta">${weekRange(now)} (주간)<br>작성일 ${now.toLocaleDateString('ko-KR')}</div>
+    <div class="hd-badge">🏢 관계사 AI 역량강화</div>
+    <div class="hd-co">${co}</div><div class="hd-t">AI 역량강화 주간 성과 보고서</div></div>
+  <div class="sec">📌 이번 주 핵심 지표</div><div class="kpis">${kpis}</div>
+  <div class="sec">💻 온라인 학습 현황</div>
+  <div class="grid2">
+    <div class="card"><div class="card-t">이수율 분포</div><div class="card-s">등록 ${reg}명 · 우수(≥80%)/진행중(40~79%)/미흡(&lt;40%)</div>${prog}</div>
+    <div class="card"><div class="card-t">모듈별 이수 현황</div><div class="card-s">전체 학습자 기준 이수율</div><div class="heat">${heat}</div>
+      <div class="active">${active}명<span style="font-size:11px;color:var(--gray);font-weight:600;margin-left:6px;">최근 7일 접속 · 등록자의 ${actPct}%</span></div></div>
+  </div>
+  <div class="sec">🌟 이번 주 하이라이트</div><div class="hls">${hls}</div>
+  <div class="sec">📋 다음 주 액션 플랜</div><div class="steps">${steps}</div>`;
+}
+
+function highlights(c,total){
+  const out=[];
+  const newReq=c.reqDone||0;
+  if(newReq>0) out.push(['🎓',`필수과정 이수 완료 ${newReq}명`,`등록 ${total}명 중 ${newReq}명(${total?Math.round(newReq/total*100):0}%)이 필수 4개 모듈을 완료했습니다.`]);
+  const chN=c.championsTotal||0;
+  if(chN>0) out.push(['🏆',`AI챔피언 후보 ${chN}명 접수`,`자기추천 ${c.championsSelf||0}명, 타인추천 ${c.championsRecommend||0}명. 활동가능 ${c.championsAvailable||0}명.`]);
+  const offN=c.offlineAttended||0;
+  if(offN>0) out.push(['🏢',`오프라인 교육 참석 ${offN}건`,`누적 출석 기록 ${c.offlineRecords||0}건.`]);
+  const avgS=c.quizAvg||0;
+  if(avgS>0) out.push(['📝',`평균 퀴즈 점수 ${avgS}점`,`합격 기준(70점) ${avgS>=70?'초과 달성':'미달'}. 응시 ${c.quizCount||0}건.`]);
+  while(out.length<3) out.push(['📈','AI 학습 진행 중','꾸준한 참여와 완료율 향상을 위해 지속적인 독려가 필요합니다.']);
+  return out.slice(0,3).map(h=>`<div class="hl"><div class="hl-i">${h[0]}</div><div class="hl-t">${h[1]}</div><div class="hl-s">${h[2]}</div></div>`).join('');
+}
+function nextSteps(c){
+  const steps=[];
+  const reg=c.registered||0, t=c.target, avg=c.avgCompletion||0;
+  const notStarted=c.notStarted||0, inactive=c.inactive||0;
+  if(t!=null){const un=t-reg;if(un>0)steps.push([`미등록 ${un}명 포털 가입 안내 (대상 ${t}명 중 ${reg}명 등록)`,'이번 주 중']);}
+  if(notStarted>0&&reg)steps.push([`미시작 ${notStarted}명 개별 독려 연락`,'이번 주 중']);
+  if(inactive>0&&reg)steps.push([`최근 미접속 ${inactive}명 재참여 유도`,'이번 주 중']);
+  if(avg<40&&reg)steps.push(['팀장 통한 학습 참여 독려 공지','월요일']);
+  steps.push(['주간 학습 현황 팀원 공유 (단톡/이메일)','매주 월요일']);
+  steps.push(['우수 이수자 포상 계획 HR팀 협의','이달 말']);
+  return steps.slice(0,4).map((s,i)=>`<div class="step"><div class="step-n">${i+1}</div><div class="step-t">${s[0]}</div><div class="step-d">${s[1]}</div></div>`).join('');
+}
+
+function renderGroup(){
+  const g=STATS.group||{};
+  const cos=companies();
+  const nCo=g.companyCount||cos.filter(c=>c.target!=null).length;
+  const sumT=g.target||0,sumReg=g.registered||0,sumEnr=g.enrolled||0;
+  const rows=cos.map((c,i)=>{
+    const reg=c.registered||0,enr=c.enrolled||0,avg=c.avgCompletion||0;
+    const t=c.target;const hasT=(t!=null);
+    const regR=hasT&&t?Math.round(reg/t*100):0;
+    return `<tr onclick="selectCo('${c.company}')"><td><span style="color:${COLORS[i%COLORS.length]}">●</span> ${c.company}</td><td>${hasT?t:'<span class="na">미정</span>'}</td><td>${reg}</td><td>${enr}</td><td>${hasT?`<span class="gbar"><i style="width:${Math.min(regR,100)}%"></i></span>${regR}%`:'<span class="na">—</span>'}</td><td>${reg?avg+'%':'<span class="na">—</span>'}</td></tr>`;
+  }).join('');
+  const totReg=g.regRate!=null?g.regRate:(sumT?Math.round(sumReg/sumT*100):0);
+  const totEnr=g.enrRate!=null?g.enrRate:(sumT?Math.round(sumEnr/sumT*100):0);
+  const notReg=g.notRegistered!=null?g.notRegistered:Math.max(sumT-sumReg,0);
+  const now=new Date();
+  document.getElementById('body').innerHTML=`
+  <div class="hd"><div class="hd-meta">${weekRange(now)} (주간)<br>작성일 ${now.toLocaleDateString('ko-KR')}</div>
+    <div class="hd-badge">🏢 SECO 비제조부문 통합</div><div class="hd-co">전체 관계사 교육 참여 현황</div><div class="hd-t">${STATS.targetBasis||''}</div></div>
+  <div class="sec">📌 SECO 비제조부문 핵심 지표</div>
+  <div class="kpis">
+    ${kCard('--blue','참여 대상',sumT,'명',`전체 ${nCo}개사 합계`,100)}
+    ${kCard('--green','등록 인원',sumReg,'명',`등록률 ${totReg}%`,totReg)}
+    ${kCard('--gold','수강 중',sumEnr,'명',`수강률 ${totEnr}%`,totEnr)}
+    ${kCard('--purple','미등록',notReg,'명','대상 대비 미가입',sumT?Math.round(notReg/sumT*100):0)}
+  </div>
+  <div class="sec">📊 관계사별 요약</div>
+  <div class="card">
+    <table class="gsum"><thead><tr><th>관계사</th><th>대상</th><th>등록</th><th>수강</th><th>등록률</th><th>평균이수</th></tr></thead>
+    <tbody>${rows}<tr class="tot"><td>합계 (전체 ${nCo}개사)</td><td>${sumT}</td><td>${sumReg}</td><td>${sumEnr}</td><td>${totReg}%</td><td>—</td></tr></tbody></table>
+    <div style="font-size:11px;color:var(--gray);margin-top:10px;">행을 클릭하면 해당 관계사 상세 보고서로 이동합니다.</div>
+  </div>`;
+}
+</script>
+</body>
+</html>

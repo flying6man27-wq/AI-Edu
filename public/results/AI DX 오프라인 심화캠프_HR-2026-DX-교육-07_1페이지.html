@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI DX 오프라인 심화캠프 1일 교육계획 · HR-2026-DX-교육-07</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#E82076;
+    --ink:#1f2330; --sub:#55585f; --gray:#77797f; --mute:#9a9ca2;
+    --line:#e2e3e6; --soft:#f5f6f7; --soft2:#eceef0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    word-break:keep-all; overflow-wrap:break-word;
+    color:var(--ink); background:#e9ebee;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  p,li,td,th,div,span,a,h1,h2,h3,h4,h5,h6{font-family:inherit; word-break:keep-all; overflow-wrap:break-word;}
+  b.hi,.hi{color:var(--pink);font-weight:800;}
+
+  .page{
+    width:297mm; height:210mm; background:#fff; margin:12px auto; padding:8mm 11mm 7mm;
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    box-shadow:0 3px 16px rgba(0,0,0,.10);
+  }
+
+  .conf{background:var(--soft2);color:#6b6e74;font-size:10px;font-weight:700;
+    text-align:center;letter-spacing:.3px;padding:5px 0;border-radius:4px;margin-bottom:6px;}
+
+  .head{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--pink);padding-bottom:6px;}
+  .brand-line{display:flex;align-items:center;gap:9px;}
+  .accent-bar{width:5px;height:21px;background:var(--pink);border-radius:2px;}
+  .affiliate{font-size:18px;font-weight:900;color:var(--ink);letter-spacing:-.3px;}
+  .title-line{display:flex;align-items:baseline;gap:11px;margin-top:6px;}
+  .doc-title{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--ink);line-height:1.1;}
+  .doc-title b{color:var(--pink);}
+  .head-meta{text-align:right;flex-shrink:0;}
+  .docno{font-size:13.5px;font-weight:900;color:var(--pink);letter-spacing:.3px;}
+  .meta-sub{font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.5;}
+  .meta-sub b{color:var(--ink);}
+
+  .summary{display:flex;gap:12px;align-items:stretch;margin-top:7px;}
+  .summary-msg{flex:1.15;background:var(--soft);border:1px solid var(--line);border-left:5px solid var(--pink);
+    border-radius:9px;padding:7px 15px;display:flex;flex-direction:column;justify-content:center;}
+  .lead-label{font-size:10px;font-weight:900;color:var(--pink);letter-spacing:1px;line-height:1.2;}
+  .lead-line{font-size:14.5px;font-weight:900;color:var(--ink);line-height:1.3;margin-top:3px;}
+  .lead-sub{font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.35;}
+  .summary-metrics{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .met{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 12px;
+    display:flex;flex-direction:column;justify-content:center;}
+  .met .v{font-size:18px;font-weight:900;color:var(--ink);line-height:1.05;}
+  .met .v small{font-size:10.5px;color:var(--gray);font-weight:700;}
+  .met .l{font-size:9px;color:var(--gray);margin-top:5px;font-weight:600;line-height:1.35;}
+
+  .stitle{display:flex;align-items:center;gap:8px;margin:7px 0 4px;}
+  .stitle .bar{width:4px;height:15px;background:var(--pink);border-radius:2px;}
+  .stitle h2{font-size:13px;font-weight:900;color:#232733;letter-spacing:.3px;line-height:1.15;}
+  .stitle .note{font-size:9.5px;color:var(--gray);margin-left:auto;font-weight:500;}
+
+  .schedule-wrap{margin-top:5px;display:flex;flex-direction:column;min-height:0;}
+  .schedule-table{width:100%;border-collapse:collapse;font-size:10px;background:#fff;
+    border:1px solid var(--line);border-radius:6px;overflow:hidden;table-layout:fixed;}
+  .schedule-table th{background:var(--soft2);padding:5px 10px;text-align:left;font-weight:900;
+    color:#33363d;border-bottom:1px solid var(--line);line-height:1.2;}
+  .schedule-table td{padding:5px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .schedule-table tr:last-child td{border-bottom:none;}
+  .schedule-table .time{width:62px;color:var(--gray);font-weight:800;}
+  .schedule-table .faci{background:var(--soft);padding:2px 6px;border-radius:4px;
+    font-size:9px;color:var(--pink);font-weight:800;display:inline-block;margin-top:5px;}
+
+  .sess-title{font-weight:700;font-size:11px;line-height:1.25;margin-bottom:2px;color:var(--ink);}
+  .sess-common{font-size:9px;line-height:1.55;color:#3d4148;}
+  .sess-common b{color:var(--pink);}
+  .sess-body{font-size:9px;line-height:1.55;color:#3d4148;}
+  .sess-goal{font-weight:800;font-size:9px;line-height:1.4;margin-top:5px;color:var(--ink);}
+  .sess-eff{font-size:8.5px;line-height:1.4;margin-top:3px;color:var(--gray);}
+
+  .box-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;}
+  .bbox{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;}
+  .bbox .bh{font-size:10.5px;font-weight:900;letter-spacing:.3px;margin-bottom:6px;color:var(--pink);
+    display:flex;align-items:center;gap:6px;}
+  .bbox .bh::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--pink);display:inline-block;}
+  .bbox ul{list-style:none;font-size:10px;line-height:1.5;color:#3d4148;}
+  .bbox li{position:relative;padding-left:12px;margin-bottom:5px;}
+  .bbox li::before{content:"–";position:absolute;left:2px;color:var(--mute);font-weight:900;}
+  .bbox li b{color:var(--ink);}
+
+  .foot{margin-top:auto;padding-top:6px;border-top:1px solid var(--line);display:flex;
+    justify-content:space-between;align-items:center;font-size:10px;color:var(--sub);}
+  .foot .fno{font-weight:800;color:var(--gray);}
+
+  @page{size:A4 landscape;margin:0;}
+  @media print{
+    html,body{background:#fff;}
+    .page{margin:0;box-shadow:none;width:297mm;height:210mm;overflow:hidden;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="conf">내부 한정 · 교육대상자 배포용</div>
+
+  <div class="head">
+    <div>
+      <div class="brand-line"><span class="accent-bar"></span><span class="affiliate">비제조부문 인사팀</span></div>
+      <div class="title-line">
+        <span class="doc-title">AI DX 오프라인 심화캠프 <b>1일 교육계획</b></span>
+      </div>
+    </div>
+    <div class="head-meta">
+      <div class="docno">HR-2026-DX-교육-07</div>
+      <div class="meta-sub">2026. 7. 23. (개정)</div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-msg">
+      <span class="lead-label">교육 개요</span>
+      <p class="lead-line">온라인 DX 교육 우수 수료자를 위한 <b>실전 산출물 중심 1일 심화캠프</b></p>
+      <p class="lead-sub">패스트캠퍼스 김진환 강사의 AI·저코드 프레임워크 + 국비 연계 특강(2h) 후, 이광현·권민호 퍼실리테이터와 함께 자신의 업무를 실제 프로토타입으로 완성하는 개인 실습(6h)으로 진행합니다</p>
+    </div>
+    <div class="summary-metrics">
+      <div class="met"><div class="v">8<small>시간</small></div><div class="l">2026.8.13(목) · 09:00~18:00</div></div>
+      <div class="met"><div class="v">2<small>개 트랙</small></div><div class="l">업무자동화·데이터 대시보드</div></div>
+      <div class="met"><div class="v">1인 1<small>건 산출</small></div><div class="l">미니 프로토타입 완성</div></div>
+    </div>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>프로그램 구성 및 시간표</h2><span class="note">패스트캠퍼스 강사 특강 2h + 퍼실리테이터 실습 6h</span></div>
+
+  <div class="schedule-wrap">
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th style="width:70px;">시간</th>
+          <th style="width:150px;">공통 세션</th>
+          <th>💡 트랙 1 · 업무자동화·웹서비스</th>
+          <th>📊 트랙 2 · 데이터 대시보드</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="time">09:00<br>~11:00</td>
+          <td colspan="3" style="background:var(--soft);text-align:left;"><div class="sess-title">AI & 저코드 도구 프레임워크 + 국비 연계 특강 (2h)</div><div class="sess-common">AI·저코드 글로벌 동향과 SECO 그룹 DX 전략 · ChatGPT·Claude·Gemini 프롬프트 엔지니어링 실습 · 노코드/로코드 플랫폼 비교(Make·Zapier·Apps Script 등) · 트랙별 도구 선택 가이드 · <b>캠프 후 패스트캠퍼스 국비지원 온라인 과정(5개월) 연계 안내</b> — <b>강사 패스트캠퍼스 김진환 강사</b> · 좋은사람들 회의실 · 전체 참가자</div></td>
+        </tr>
+        <tr>
+          <td class="time">11:00<br>~12:00</td>
+          <td></td>
+          <td><div class="sess-title">트랙 킥오프 & 과제 설계</div><div class="sess-body">반복업무 자동화 개념 · Make/Zapier/n8n 비교 · 웹서비스 제작 사례(MADE THIS 포트폴리오) · 개인별 자동화 과제 정의</div><div class="faci">촉진 · 이광현</div></td>
+          <td><div class="sess-title">트랙 킥오프 & 과제 설계</div><div class="sess-body">대시보드 설계 원칙 · 데이터 수집·정제 기초 · Looker Studio/Tableau 소개 · 개인별 대시보드 과제 정의</div><div class="faci">촉진 · 권민호</div></td>
+        </tr>
+        <tr>
+          <td class="time">12:00<br>~13:00</td>
+          <td colspan="3" style="background:var(--soft);text-align:center;font-weight:700;">🍽️ 점심 시간</td>
+        </tr>
+        <tr>
+          <td class="time">13:00<br>~17:00</td>
+          <td></td>
+          <td><div class="sess-title">집중 실습 & 개별 코칭</div><div class="sess-body">반복업무 선정 · 자동화 시나리오 설계·구현(Make/Zapier/n8n) · 웹서비스 제작(React·Python) · 테스트·수정 · 개별 코칭</div><div class="sess-goal">목표: 자동화 워크플로우·웹서비스 1건 완성</div><div class="sess-eff">효과: 반복작업 제거 · 생산성 향상</div><div class="faci">촉진 · 이광현</div></td>
+          <td><div class="sess-title">집중 실습 & 개별 코칭</div><div class="sess-body">부서 데이터 수집·정제 · 대시보드 설계·시각화(Looker Studio·Tableau) · 배포·공유 설정 · 개별 코칭</div><div class="sess-goal">목표: 운영 대시보드 프로토타입 완성</div><div class="sess-eff">효과: 실시간 모니터링 · 의사결정 속도↑</div><div class="faci">촉진 · 권민호</div></td>
+        </tr>
+        <tr>
+          <td class="time">17:00<br>~18:00</td>
+          <td colspan="3" style="background:var(--soft);text-align:center;font-weight:700;">🎯 트랙별 결과 발표 & 우수사례 시상 (퍼실리테이터 진행)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>참가 준비사항 및 기대효과</h2><span class="note">캠프 전 확인사항 · 사후 지원</span></div>
+
+  <div class="box-grid">
+    <div class="bbox">
+      <div class="bh">준비물 · 참가 전 확인사항</div>
+      <ul>
+        <li><b>노트북</b>: 개인 업무용 노트북 지참 필수 · 실습 데이터 사전 준비</li>
+        <li><b>트랙 선택</b>: 신청 시 선호 트랙 1순위 명시 (수강인원 고려해 최종 배정)</li>
+        <li><b>사전 참고자료</b>: 캠프 1주일 전 이메일 발송 · <a href="https://aichamp-portfolio.vercel.app/" target="_blank" style="color:var(--pink);">업무자동화·웹서비스 포트폴리오</a>(트랙1) · <a href="DX교육_실전사례해부_강의록_HR-2026-DX-교육-08.html" target="_blank" style="color:var(--pink);">데이터 대시보드 설계 강의록</a>(트랙2)</li>
+      </ul>
+    </div>
+    <div class="bbox">
+      <div class="bh">기대효과 · 사후 지원</div>
+      <ul>
+        <li><b>패스트캠퍼스 트랙A(노코드 직무별 AI 실전)</b>: 기획·마케팅·데이터·CX/CS·세일즈·HR 등 전 직무별 맞춤 AI 실습 6종, 직무별 챗봇·템플릿·대시보드 등 즉시 활용 산출물까지 완성</li>
+        <li><b>실전 산출물</b>: 1인 1건 이상 완성형 프로토타입 · 현업 즉시 적용 가능</li>
+        <li><b>챔피언 네트워크</b>: 캠프 후 실무 Q&A 채널 개설 · 지속 지원</li>
+        <li><b>사례공유 · 추후 심화</b>: 우수 산출물 사내 표창 · 상위 심화 워크숍 이수자 선발</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>비제조부문 인사팀</div>
+    <div class="fno">HR-2026-DX-교육-07 · 2026. 7. 23. (개정)</div>
+  </div>
+
+</div>
+
+</body>
+</html>

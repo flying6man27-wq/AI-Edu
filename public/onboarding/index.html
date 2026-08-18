@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1660C8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>SECO 신규입사자 온보딩 학습 포털</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F4F6FA;--bg2:#fff;--text:#12122A;--text2:#38385C;--gray:#7A7A9A;--border:#D8DCF0;
+  --blue:#1660C8;--blue-dim:rgba(22,96,200,0.08);--blue-mid:rgba(22,96,200,0.2);
+  --green:#1A9650;--green-dim:rgba(26,150,80,0.08);--green-mid:rgba(26,150,80,0.2);
+  --gold:#C8880A;--gold-dim:rgba(200,136,10,0.08);--gold-mid:rgba(200,136,10,0.2);
+  --purple:#6432B8;--purple-dim:rgba(100,50,184,0.08);
+  --orange:#BE4C0A;--orange-dim:rgba(190,76,10,0.08);
+  --font:'Apple SD Gothic Neo','Noto Sans KR','맑은 고딕',sans-serif;
+  --topbar-h:56px;
+  --bottom-nav-h:0px;
+}
+html,body{
+  height:100%;
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  word-break:keep-all;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ─── LAYOUT ─── */
+.app{
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+}
+
+/* ─── TOP BAR ─── */
+.topbar{
+  flex-shrink:0;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  height:var(--topbar-h);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  position:relative;
+  z-index:100;
+}
+.hamburger{
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  width:40px;height:40px;
+  border:none;background:none;
+  cursor:pointer;border-radius:8px;
+  gap:5px;flex-shrink:0;
+  padding:8px;
+  transition:background .15s;
+}
+.hamburger:hover{background:var(--bg);}
+.hamburger span{
+  display:block;width:20px;height:2px;
+  background:var(--text2);border-radius:2px;
+  transition:all .25s;
+}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.topbar-logo{font-size:15px;font-weight:900;color:var(--blue);letter-spacing:-.3px;}
+.topbar-sub{font-size:11px;color:var(--gray);font-weight:500;}
+.topbar-brand{flex:1;min-width:0;}
+.progress-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.progress-label{font-size:11px;font-weight:700;color:var(--text2);}
+.progress-bar-bg{width:120px;height:8px;background:var(--border);border-radius:4px;overflow:hidden;flex-shrink:0;}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:4px;transition:width .4s;}
+.progress-pct{font-size:12px;font-weight:800;color:var(--blue);min-width:30px;text-align:right;}
+.topbar-user{display:flex;align-items:center;gap:8px;}
+.topbar-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.topbar-name{font-size:12px;font-weight:700;color:var(--text2);}
+.topbar-company{font-size:10px;color:var(--gray);}
+
+.main{display:flex;flex:1;overflow:hidden;position:relative;}
+
+/* ─── SIDEBAR OVERLAY ─── */
+.sidebar-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(18,18,42,.45);
+  z-index:299;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+.sidebar-overlay.show{display:block;}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  width:280px;
+  flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:300;
+  -webkit-overflow-scrolling:touch;
+}
+.sidebar-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sidebar-head h3{font-size:13px;font-weight:800;color:var(--text);}
+.sidebar-head p{font-size:11px;color:var(--gray);margin-top:2px;}
+.track-label{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:10px 16px 4px;color:var(--gray);}
+.mod-item{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 16px;
+  cursor:pointer;
+  border-left:3px solid transparent;
+  transition:all .15s;
+  position:relative;
+  min-height:52px;
+}
+.mod-item:hover{background:var(--bg);}
+.mod-item:active{background:var(--blue-dim);}
+.mod-item.active{background:var(--blue-dim);border-left-color:var(--blue);}
+.mod-item.done .mod-icon{background:var(--green);color:#fff;}
+.mod-item.active .mod-icon{background:var(--blue);color:#fff;}
+.mod-icon{width:30px;height:30px;border-radius:7px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--gray);flex-shrink:0;transition:all .2s;}
+.mod-info{flex:1;min-width:0;}
+.mod-title{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mod-meta{font-size:10.5px;color:var(--gray);margin-top:1px;}
+.mod-badge{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:auto;flex-shrink:0;}
+.badge-required{background:var(--blue-dim);color:var(--blue);}
+.badge-advanced{background:var(--gold-dim);color:var(--gold);}
+.badge-bonus{background:var(--purple-dim);color:var(--purple);}
+.badge-done{background:var(--green-dim);color:var(--green);}
+
+/* ─── CONTENT ─── */
+.content{flex:1;overflow-y:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;}
+.content-inner{padding:20px 24px;max-width:900px;width:100%;}
+
+/* HOME */
+.home-hero{background:linear-gradient(135deg,#1660C8,#6432B8);border-radius:16px;padding:24px 28px;color:#fff;margin-bottom:20px;}
+.home-hero h1{font-size:20px;font-weight:900;line-height:1.3;margin-bottom:6px;}
+.home-hero p{font-size:12.5px;opacity:.85;margin-bottom:16px;}
+.home-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.home-stat{background:rgba(255,255,255,.15);border-radius:10px;padding:10px;text-align:center;}
+.home-stat-val{font-size:20px;font-weight:900;}
+.home-stat-label{font-size:10px;opacity:.8;margin-top:2px;}
+.track-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+.track-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;}
+.track-card-title{font-size:13px;font-weight:800;margin-bottom:4px;}
+.track-card-desc{font-size:11.5px;color:var(--text2);line-height:1.6;}
+.track-progress{margin-top:8px;display:flex;align-items:center;gap:8px;}
+.track-pb{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.track-pb-fill{height:100%;border-radius:3px;transition:width .4s;}
+.track-pct{font-size:11px;font-weight:700;}
+.start-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--blue);color:#fff;border:none;
+  padding:13px 22px;border-radius:10px;
+  font-size:14px;font-weight:700;cursor:pointer;
+  margin-top:4px;transition:opacity .15s;
+  min-height:48px;
+}
+.start-btn:hover{opacity:.88;}
+.start-btn:active{opacity:.75;}
+
+/* MODULE VIEW */
+.mod-header{margin-bottom:14px;}
+.mod-header-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.mod-num-big{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0;}
+.mod-header-info h2{font-size:18px;font-weight:900;color:var(--text);line-height:1.2;}
+.mod-header-info p{font-size:12px;color:var(--gray);margin-top:2px;}
+.mod-tags{display:flex;gap:6px;flex-wrap:wrap;}
+.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;}
+
+/* ─── LOGIN MODAL ─── */
+.login-overlay{position:fixed;inset:0;background:rgba(18,18,42,.72);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+.login-overlay.hidden{display:none;}
+.login-box{
+  background:#fff;
+  border-radius:20px 20px 0 0;
+  padding:28px 24px calc(28px + env(safe-area-inset-bottom));
+  width:100%;
+  max-width:520px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.18);
+  max-height:90vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.login-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+.login-logo{font-size:13px;font-weight:900;color:var(--blue);letter-spacing:-.2px;margin-bottom:4px;}
+.login-title{font-size:19px;font-weight:900;color:var(--text);line-height:1.3;margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--gray);margin-bottom:20px;line-height:1.6;}
+.login-field{margin-bottom:14px;}
+.login-label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;display:block;}
+.login-input,.login-select{
+  width:100%;padding:12px 14px;
+  border:1.5px solid var(--border);
+  border-radius:10px;font-size:16px;
+  font-family:var(--font);color:var(--text);
+  background:#fff;outline:none;
+  transition:border .15s;
+  -webkit-appearance:none;
+  min-height:48px;
+}
+.login-input:focus,.login-select:focus{border-color:var(--blue);}
+.login-select{
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7A9A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+}
+.login-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;
+  margin-top:6px;transition:opacity .15s;
+  min-height:52px;
+}
+.login-btn:hover{opacity:.9;}
+.login-btn:active{opacity:.8;}
+.login-note{font-size:10.5px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.6;}
+
+/* VIDEO PLAYER */
+.video-wrap{position:relative;padding-bottom:56.25%;height:0;background:#0d0d1a;border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.video-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;}
+
+/* VIDEO POSTER */
+.yt-poster{position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer;overflow:hidden;}
+.yt-poster-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
+.yt-poster:active .yt-poster-img{transform:scale(1.03);}
+.yt-poster-overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:rgba(0,0,0,.35);transition:background .2s;
+}
+.yt-poster:active .yt-poster-overlay{background:rgba(0,0,0,.15);}
+.yt-play-icon{filter:drop-shadow(0 2px 12px rgba(0,0,0,.5));}
+.yt-poster-title{color:#fff;font-size:12px;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.9);max-width:80%;text-align:center;line-height:1.4;}
+
+/* VIDEO FALLBACK */
+.yt-fallback{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(135deg,#0d0d1a 0%,#1a1035 50%,#0d1a2e 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;color:#fff;text-align:center;padding:20px;
+}
+.yt-fallback-thumb{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:24px;}
+.yt-fallback-title{font-size:13px;font-weight:800;opacity:.95;max-width:360px;line-height:1.5;}
+.yt-fallback-sub{font-size:11px;opacity:.5;margin-top:-6px;}
+.yt-fallback-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#FF0000;color:#fff;border:none;
+  padding:12px 24px;border-radius:10px;
+  font-size:13px;font-weight:800;
+  text-decoration:none;cursor:pointer;
+  min-height:48px;
+}
+.yt-fallback-note{font-size:10px;opacity:.38;margin-top:-4px;}
+
+/* OBJECTIVE BOX */
+.obj-box{background:var(--blue-dim);border:1px solid var(--blue-mid);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+.obj-box h4{font-size:12px;font-weight:800;color:var(--blue);margin-bottom:8px;}
+.obj-list{list-style:none;}
+.obj-list li{font-size:12.5px;color:var(--text2);line-height:1.6;padding-left:14px;position:relative;}
+.obj-list li::before{content:'✓';position:absolute;left:0;color:var(--blue);font-weight:700;}
+
+/* QUIZ */
+.quiz-section{background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;}
+.quiz-section h3{font-size:14px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.quiz-q{margin-bottom:18px;}
+.quiz-q-text{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.5;}
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+.quiz-opt{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 14px;
+  border:1.5px solid var(--border);
+  border-radius:10px;cursor:pointer;
+  font-size:13px;color:var(--text2);
+  transition:all .15s;user-select:none;
+  min-height:52px;
+}
+.quiz-opt:active{border-color:var(--blue);background:var(--blue-dim);}
+.quiz-opt.selected{border-color:var(--blue);background:var(--blue-dim);color:var(--blue);font-weight:700;}
+.quiz-opt.correct{border-color:var(--green);background:var(--green-dim);color:var(--green);font-weight:700;}
+.quiz-opt.wrong{border-color:#C02020;background:rgba(192,32,32,0.07);color:#C02020;}
+.quiz-opt.disabled{pointer-events:none;}
+.quiz-opt-label{
+  width:26px;height:26px;border-radius:7px;
+  background:var(--border);display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:800;
+  flex-shrink:0;transition:all .15s;
+}
+.quiz-opt.selected .quiz-opt-label{background:var(--blue);color:#fff;}
+.quiz-opt.correct .quiz-opt-label{background:var(--green);color:#fff;}
+.quiz-opt.wrong .quiz-opt-label{background:#C02020;color:#fff;}
+.quiz-submit{
+  background:var(--blue);color:#fff;border:none;
+  padding:14px 24px;border-radius:10px;
+  font-size:14px;font-weight:700;cursor:pointer;
+  margin-top:12px;transition:opacity .15s;
+  width:100%;min-height:52px;
+}
+.quiz-submit:hover{opacity:.88;}
+.quiz-submit:active{opacity:.75;}
+.quiz-submit:disabled{opacity:.38;cursor:default;}
+.quiz-result{margin-top:12px;padding:14px 16px;border-radius:10px;font-size:13px;font-weight:700;}
+.quiz-result.pass{background:var(--green-dim);color:var(--green);border:1px solid var(--green-mid);}
+.quiz-result.fail{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(190,76,10,.2);}
+.quiz-retry{
+  background:none;border:1.5px solid var(--orange);
+  color:var(--orange);padding:12px 18px;
+  border-radius:9px;font-size:13px;font-weight:700;
+  cursor:pointer;margin-top:10px;
+  width:100%;min-height:48px;
+}
+
+/* NEXT/PREV BUTTONS */
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;}
+.btn-next{
+  background:var(--green);color:#fff;border:none;
+  padding:13px 20px;border-radius:10px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:opacity .15s;flex:1;justify-content:center;
+  min-height:52px;
+}
+.btn-next:hover{opacity:.88;}
+.btn-next:active{opacity:.75;}
+.btn-next:disabled{opacity:.3;cursor:default;}
+.btn-prev{
+  background:none;border:1.5px solid var(--border);
+  color:var(--text2);padding:13px 16px;
+  border-radius:10px;font-size:13px;
+  font-weight:700;cursor:pointer;
+  min-height:52px;
+}
+.btn-prev:hover{border-color:var(--blue);color:var(--blue);}
+.btn-prev:active{background:var(--blue-dim);}
+
+/* COMPLETE BANNER */
+.complete-banner{background:linear-gradient(135deg,var(--green),#0d7a3e);border-radius:12px;padding:22px;color:#fff;text-align:center;margin-bottom:16px;}
+.complete-banner h2{font-size:20px;font-weight:900;margin-bottom:6px;}
+.complete-banner p{font-size:13px;opacity:.88;}
+
+/* PAGE DECK (온보딩 매뉴얼 원본 이미지) */
+.page-deck{margin-bottom:18px;}
+.page-deck-head{font-size:12.5px;font-weight:800;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.page-deck-head span{font-size:11px;font-weight:600;color:var(--gray);}
+.page-fig{margin:0 0 14px;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(18,18,42,.05);}
+.page-img{display:block;width:100%;height:auto;cursor:zoom-in;background:#fff;}
+.page-cap{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--text2);padding:9px 12px;background:var(--bg);border-top:1px solid var(--border);line-height:1.45;}
+.page-no{flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+/* KEY BOX (핵심 정리) */
+.key-box{background:var(--bg2,#F7F8FC);border:1.5px solid var(--border);border-left:4px solid var(--green);border-radius:12px;padding:15px 17px;margin-bottom:16px;}
+.key-box h4{font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.key-box h4 span{font-size:11px;font-weight:600;color:var(--gray);}
+.key-list{list-style:none;padding:0;margin:0;}
+.key-list li{font-size:12.5px;color:var(--text2);line-height:1.7;padding:6px 0 6px 15px;position:relative;border-bottom:1px solid rgba(0,0,0,.05);}
+.key-list li:last-child{border-bottom:none;}
+.key-list li::before{content:'\2022';position:absolute;left:2px;color:var(--green);font-weight:900;}
+/* LIGHTBOX (페이지 확대) */
+.lightbox{position:fixed;inset:0;background:rgba(10,10,24,.94);z-index:10000;display:none;flex-direction:column;}
+.lightbox.show{display:flex;}
+.lightbox-close{position:absolute;top:12px;right:12px;z-index:2;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.lightbox-cap{color:#fff;font-size:12.5px;font-weight:700;padding:16px 110px 10px 16px;line-height:1.5;}
+.lightbox-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:0 10px 20px;}
+.lightbox-scroll img{width:100%;max-width:900px;margin:0 auto;display:block;border-radius:8px;background:#fff;}
+/* CERT */
+.cert-box{background:linear-gradient(135deg,#EDF3FF,#F2ECFF);border:2px solid rgba(22,96,200,.2);border-radius:14px;padding:22px;text-align:center;margin-top:20px;}
+.cert-title{font-size:20px;font-weight:900;color:var(--blue);margin-bottom:4px;}
+.cert-sub{font-size:13px;color:var(--text2);}
+.cert-name{font-size:17px;font-weight:800;color:var(--text);margin:12px 0 4px;}
+.cert-date{font-size:12px;color:var(--gray);}
+.cert-modules{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+
+/* ─── BOTTOM NAV (모바일 전용) ─── */
+.bottom-nav{
+  display:none;
+  flex-shrink:0;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  height:calc(56px + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  align-items:stretch;
+}
+.bottom-nav-btn{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:3px;border:none;background:none;
+  cursor:pointer;padding:8px 4px;
+  color:var(--gray);font-size:10px;font-weight:600;
+  transition:color .15s;min-height:48px;
+}
+.bottom-nav-btn.active{color:var(--blue);}
+.bottom-nav-icon{font-size:22px;line-height:1;}
+
+/* ─── SAFE AREA PADDING (iOS 노치) ─── */
+.content{
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+/* ─── 모바일 반응형 ─── */
+@media(max-width:768px){
+  :root{ --bottom-nav-h:calc(56px + env(safe-area-inset-bottom)); }
+
+  .hamburger{ display:flex; }
+
+  .topbar{ padding:0 12px; gap:8px; }
+  .topbar-sub{ display:none; }
+  .topbar-logo{ font-size:14px; }
+
+  .progress-label{ display:none; }
+  .progress-bar-bg{ width:80px; }
+  .progress-pct{ font-size:11px; }
+
+  /* topbar-user 이름 숨김, 아바타만 표시 */
+  .topbar-user .topbar-name,
+  .topbar-user .topbar-company{ display:none; }
+
+  /* 사이드바 → 드로어 */
+  .sidebar{
+    position:fixed;
+    top:var(--topbar-h);
+    left:0;
+    height:calc(100% - var(--topbar-h));
+    width:min(280px, 85vw);
+    transform:translateX(-100%);
+    box-shadow:4px 0 24px rgba(0,0,0,.12);
+    z-index:300;
+  }
+  .sidebar.open{
+    transform:translateX(0);
+  }
+
+  .content-inner{ padding:14px 14px 24px; }
+
+  .home-hero{ padding:18px 18px; }
+  .home-hero h1{ font-size:17px; }
+  .home-stat-row{ grid-template-columns:repeat(2,1fr); gap:8px; }
+  .track-cards{ grid-template-columns:1fr; }
+
+  .mod-header-info h2{ font-size:16px; }
+  .mod-header-info p{ font-size:11px; }
+
+  .bottom-nav{ display:flex; }
+  .content{ padding-bottom:0; }
+}
+
+@media(max-width:380px){
+  .progress-bar-bg{ width:60px; }
+  .home-hero h1{ font-size:15px; }
+}
+
+/* ─── 태블릿 ─── */
+@media(min-width:769px) and (max-width:1024px){
+  .sidebar{ width:240px; }
+  .content-inner{ padding:16px 18px; }
+}
+
+/* ─── AI챔피언 도전 메뉴 ─── */
+.champion-sidebar{border-top:1px solid var(--border);padding:10px 0 6px;margin-top:8px;}
+.champion-item{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;}
+.champion-item:hover{background:var(--gold-dim);}
+.champion-item.active{background:var(--gold-dim);border-left-color:var(--gold);}
+.champion-icon{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--gold),#8B5E00);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.champion-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--gold-dim);color:var(--gold);flex-shrink:0;}
+.champion-hero{background:linear-gradient(135deg,#C8880A,#7A4E00);border-radius:16px;padding:24px 28px;color:#fff;margin-bottom:20px;}
+.champion-hero h1{font-size:20px;font-weight:900;line-height:1.3;margin-bottom:6px;}
+.champion-hero p{font-size:12.5px;opacity:.87;margin-bottom:16px;line-height:1.6;}
+.champion-criteria{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+.criterion-card{background:var(--bg2);border:1.5px solid var(--gold-mid);border-radius:12px;padding:14px 16px;}
+.criterion-icon{font-size:20px;margin-bottom:4px;}
+.criterion-title{font-size:12px;font-weight:800;color:var(--gold);margin-bottom:3px;}
+.criterion-desc{font-size:11px;color:var(--text2);line-height:1.5;}
+.champ-form{background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+.champ-form h3{font-size:15px;font-weight:800;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.champ-field{margin-bottom:13px;}
+.champ-label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;display:block;}
+.champ-input,.champ-select,.champ-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:var(--font);color:var(--text);background:#fff;outline:none;transition:border .15s;-webkit-appearance:none;min-height:44px;}
+.champ-input:focus,.champ-select:focus,.champ-textarea:focus{border-color:var(--gold);}
+.champ-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7A9A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.champ-textarea{min-height:76px;resize:vertical;line-height:1.6;}
+.champ-section-title{font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--gold);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--gold-mid);}
+.champ-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.champ-submit{background:linear-gradient(135deg,var(--gold),#7A4E00);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;padding:15px;min-height:52px;margin-top:6px;transition:opacity .15s;}
+.champ-submit:hover{opacity:.9;}
+.champ-submit:active{opacity:.75;}
+.champ-submit:disabled{opacity:.38;cursor:default;}
+.champ-success{background:var(--green-dim);border:1.5px solid var(--green-mid);border-radius:12px;padding:22px;text-align:center;margin-top:16px;}
+.champ-success h3{color:var(--green);font-size:16px;font-weight:900;margin-bottom:8px;}
+.champ-success p{color:var(--text2);font-size:13px;line-height:1.7;}
+@media(max-width:480px){.champ-row{grid-template-columns:1fr;}.champion-criteria{grid-template-columns:1fr;}}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LOGIN MODAL -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-handle"></div>
+      <div class="login-logo">🎓 비제조부문 AI 학습 포털</div>
+      <div class="login-title">학습을 시작하기 전에<br>정보를 입력해 주세요</div>
+      <div class="login-sub">입력하신 정보는 학습 진도 관리 및 HR 운영에만 활용됩니다.</div>
+      <div class="login-field">
+        <label class="login-label">이름 *</label>
+        <input class="login-input" id="loginName" type="text" placeholder="홍길동" maxlength="20" autocomplete="name">
+      </div>
+      <div class="login-field">
+        <label class="login-label">소속 회사 *</label>
+        <select class="login-select" id="loginCompany">
+          <option value="">— 선택하세요 —</option>
+          <option>연합</option>
+          <option>좋은사람들</option>
+          <option>휴맥스해운항공</option>
+          <option>쌤앤파커스</option>
+          <option>인터렉스메가라인</option>
+          <option>상일식품</option>
+          <option>인베스터유나이티드</option>
+          <option>우리인터텍스</option>
+          <option>세코글로벌</option>
+          <option>미찌푸드</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label class="login-label">이메일 (사번 이메일) *</label>
+        <input class="login-input" id="loginEmail" type="email" placeholder="hong@company.com" autocomplete="email">
+      </div>
+      <button class="login-btn" onclick="doLogin()">학습 시작하기 →</button>
+      <div class="login-note">※ 이미 학습을 시작하셨다면 동일한 이메일을 입력하시면 진도가 이어집니다</div>
+    </div>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="메뉴 열기">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-brand">
+      <div class="topbar-logo">🌱 온보딩 학습 포털</div>
+      <div class="topbar-sub">SECO 비제조부문 · 신규입사자 온보딩 자가학습</div>
+    </div>
+    <div class="topbar-user" id="topbarUser" style="display:none;">
+      <div class="topbar-avatar" id="topbarAvatar">?</div>
+      <div>
+        <div class="topbar-name" id="topbarName"></div>
+        <div class="topbar-company" id="topbarCompanyLabel"></div>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <span class="progress-label">전체 진도</span>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="globalFill" style="width:0%"></div></div>
+      <span class="progress-pct" id="globalPct">0%</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- SIDEBAR OVERLAY (모바일) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <h3>학습 모듈</h3>
+        <p>클릭하여 학습을 시작하세요</p>
+      </div>
+      <div id="sidebarList"></div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="content-inner" id="contentArea"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV (모바일 전용) -->
+  <div class="bottom-nav" id="bottomNav">
+    <button class="bottom-nav-btn active" id="bnHome" onclick="renderHome(); setBottomNav('home')">
+      <span class="bottom-nav-icon">🏠</span>홈
+    </button>
+    <button class="bottom-nav-btn" id="bnList" onclick="toggleSidebar(); setBottomNav('list')">
+      <span class="bottom-nav-icon">📚</span>모듈
+    </button>
+    <button class="bottom-nav-btn" id="bnProgress" onclick="renderHome(); setBottomNav('home')">
+      <span class="bottom-nav-icon">📊</span>진도
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const MODULES = [
+  // ══ 트랙 1: 온보딩 기본 ══
+  {
+    id:'OB01', track:'온보딩 기본', trackColor:'var(--blue)', badge:'required',
+    title:'온보딩 이해하기',
+    sub:'온보딩 목적·구성 · SECO 비전체계 · 입사 후 일정',
+    time:'약 8분', level:'Lv.1 신규입사자',
+    objectives:[
+      '온보딩 프로그램의 목적과 구성을 설명할 수 있다',
+      'SECO 비전 체계(비전·핵심가치·정신)를 이해할 수 있다',
+      '입사 후 진행되는 온보딩 일정 전체 흐름을 파악할 수 있다',
+    ],
+    pages:[
+      { f:'p02', cap:'온보딩 개념 — 목적 · 목표 / 구성' },
+      { f:'p03', cap:'SECO 비전 체계도 — Dream Big, SECO' },
+      { f:'p04', cap:'핵심가치(행동기준) · 정신(SECO의 DNA)' },
+      { f:'p05', cap:'입사 후 온보딩 일정' },
+      { f:'p16', cap:'[예고] 자기 성장계획 수립 — 소집교육 당일 작성' },
+    ],
+    key:[
+      '온보딩 목적 — SECO 비즈니스 全 부문 이해, 학습을 통해 조기에 중견사원으로 업무능력 확보',
+      '프로그램 구성 — ① 온보딩 프로그램(16H / 입사 1·2일차) ② SECO 비전 통합교육(8H / 반기 1회)',
+      '비전(Vision) — <b>Dream Big, SECO</b> · 더 큰 내일을 꿈꾸게 하며 세상을 이롭게',
+      '핵심가치(Core Value) — <b>책임 · 사랑</b> / 정신(Spirit) — <b>겸손 · 도전 · 끈기</b>',
+      '입사 후 일정 — 환영·안내 → 대표 간담회 → 인사정보 등록·생활안내 → 구성원 소개 → 업무공간·안전보건 → 시스템 셋업 → 보안교육 → 회사 소개 → 인사제도',
+      '자기 성장계획 수립은 <b>연 2회(4월·10월) 온보딩 소집교육 당일 현장</b>에서 직접 작성합니다',
+    ],
+    quiz:[
+      { q:'온보딩 프로그램의 목표로 옳지 <b>않은</b> 것은?', opts:['출근 첫날부터 일할 수 있는 환경 조성','조기에 업무수행능력 확보','SECO 비즈니스 이해와 협업역량 발휘','입사 즉시 타부서로 배치'], ans:3 },
+      { q:'SECO 비전 체계도의 핵심가치(Core Value) 두 가지는?', opts:['책임 · 사랑','겸손 · 도전','도전 · 끈기','성실 · 열정'], ans:0 },
+      { q:'SECO(비제조부문) 비전 통합교육의 운영 주기와 시간은?', opts:['매월 1회 · 4시간','반기 1회 · 8시간','연 1회 · 16시간','분기 1회 · 8시간'], ans:1 },
+      { q:'자기 성장계획 수립은 언제 작성하는가?', opts:['입사 첫날 온라인으로','자가학습 기간 중 자유롭게','온보딩 소집교육(4월·10월) 당일 현장에서','수습 종료 시점에'], ans:2 },
+    ]
+  },
+
+  // ══ 트랙 2: 비즈니스 매너 ══
+  {
+    id:'OB02', track:'비즈니스 매너', trackColor:'var(--green)', badge:'required',
+    title:'첫인상과 매너 기본',
+    sub:'인사의 기본 · 부서원 인사 · 명함 교환',
+    time:'약 10분', level:'Lv.1 신규입사자',
+    objectives:[
+      '인사의 기본 원칙과 올바른 시선 처리를 실천할 수 있다',
+      '상황별(부서 내·타부서·온라인) 첫인사 멘트를 활용할 수 있다',
+      '명함 교환의 원칙과 주의사항을 지킬 수 있다',
+    ],
+    pages:[
+      { f:'p06', cap:'인사의 기본 / 부서원에게 인사하기' },
+      { f:'p07', cap:'명함 교환하기 · 주의사항 7가지' },
+    ],
+    key:[
+      '인사는 밝고 활기차게 — 나의 응대가 상대방의 하루를 좌우한다는 생각으로',
+      '상급자와 인사할 때는 <b>상의 단추를 잠근다</b> / 시선은 코 끝 이상으로 내리지 않는다',
+      '(출근) “좋은아침입니다” · “안녕하십니까?” / (퇴근) “먼저 퇴근하겠습니다” · “내일 뵙겠습니다”',
+      '명함은 <b>두 손 교환이 원칙</b>, 동시에 주고받을 때는 <b>오른손으로 건네고 왼손으로 받는다</b>',
+      '상급자와 함께 있을 때는 <b>상급자가 먼저 건넨 다음</b> 내가 건넨다',
+      '받은 명함을 바로 집어넣거나, 고객 앞에서 메모하거나, 앉은 채 교환하지 않는다',
+    ],
+    quiz:[
+      { q:'명함을 동시에 주고받는 상황에서 올바른 방법은?', opts:['왼손으로 건네고 오른손으로 받는다','오른손으로 건네고 왼손으로 받는다','아무 손이나 상관없다','동시 교환은 실례이므로 피한다'], ans:1 },
+      { q:'상급자와 함께 있을 때 명함을 건네는 순서로 옳은 것은?', opts:['내가 먼저 건넨다','상급자가 먼저 건넨 다음 내가 건넨다','동시에 건넨다','상급자만 건넨다'], ans:1 },
+      { q:'명함 교환 시 주의사항으로 옳지 <b>않은</b> 것은?', opts:['받은 명함을 바로 집어넣지 않는다','고객 앞에서 명함에 메모하지 않는다','두 손으로 정중히 주고받는다','앉은 채로 편하게 교환한다'], ans:3 },
+      { q:'인사할 때 올바른 시선 처리는?', opts:['시선을 코 끝 이상으로 내리지 않는다','바닥을 보며 겸손함을 표현한다','눈을 피해 부담을 주지 않는다','상대의 어깨를 응시한다'], ans:0 },
+    ]
+  },
+  {
+    id:'OB03', track:'비즈니스 매너', trackColor:'var(--green)', badge:'required',
+    title:'회사생활 필수 용어',
+    sub:'문서 용어 · 제도 용어 · 업무 약어',
+    time:'약 10분', level:'Lv.1 신규입사자',
+    objectives:[
+      '품의서·기안서 등 회사 문서 용어를 구분해 사용할 수 있다',
+      '연차/반차, 결재/결제 등 혼동하기 쉬운 용어를 정확히 이해한다',
+      '업무 중 자주 쓰이는 약어(EOD·CC·R&R 등)를 해석할 수 있다',
+    ],
+    pages:[
+      { f:'p08', cap:'회사생활에서 유용하게 쓰이는 용어' },
+    ],
+    key:[
+      '<b>품의서</b> — 상사에게 제출하는, 업무를 의논하는 글 / <b>기안서</b> — 안건 발의와 예상경과(비용) 기술',
+      '<b>지출결의서</b> — 돈 사용의 근거 문서 / <b>경위서</b> — 사건 전후과정과 인과 / <b>시말서</b> — 과오에 대한 반성',
+      '<b>결재</b> = 검토·승인하는 과정 / <b>결제</b> = 대금을 주고받아 거래를 끝맺는 것',
+      '<b>EOD</b> 오늘 일과 종료까지 / <b>CC</b> 참조 / <b>R&amp;R</b> 역할과 책임 / <b>ASAP</b> 가능한 빨리',
+      '<b>FYI</b> 참고 / <b>TBD</b> 추후 결정 / <b>TFT</b> 부서 간 협업 임시조직 / <b>KPI</b> 핵심성과지표',
+    ],
+    quiz:[
+      { q:'상사에게 업무를 의논하기 위해 작성하여 제출하는 문서는?', opts:['경위서','품의서','시말서','지출결의서'], ans:1 },
+      { q:'‘EOD’의 의미로 옳은 것은?', opts:['이메일 참조','오늘까지 기한','급하게 처리','추후 결정'], ans:1 },
+      { q:'‘결재’와 ‘결제’의 차이로 옳은 것은?', opts:['결재=대금 지급, 결제=승인 절차','결재=승인 절차, 결제=대금 지급','둘 다 같은 의미이다','결재는 구두, 결제는 문서로 한다'], ans:1 },
+      { q:'여러 부서와 협업이 필요할 때 적합한 인원을 모아 구성하는 팀을 뜻하는 약어는?', opts:['PM','KPI','TFT','TBD'], ans:2 },
+    ]
+  },
+
+  // ══ 트랙 3: 의사소통 ══
+  {
+    id:'OB04', track:'의사소통', trackColor:'var(--purple)', badge:'required',
+    title:'커뮤니케이션 에티켓',
+    sub:'전화 · 이메일 · 메신저 에티켓 · 호칭',
+    time:'약 10분', level:'Lv.1 신규입사자',
+    objectives:[
+      '전화·이메일·메신저 각각의 응대 원칙을 지킬 수 있다',
+      '사내 호칭 규칙을 상황(상급자·동료·하급자)에 맞게 적용할 수 있다',
+      '실수하기 쉬운 존칭 표현을 구분할 수 있다',
+    ],
+    pages:[
+      { f:'p09', cap:'전화 · 이메일 · 메신저 에티켓' },
+      { f:'p10', cap:'소셜 네트워크 에티켓 · 회사에서 사용하는 호칭' },
+    ],
+    key:[
+      '전화는 <b>벨이 3번 울리기 전</b>에 받고, 받으면 소속과 성명을 밝힌다',
+      '전화를 걸 때는 통화하기 적절한 시간인지 먼저 확인한다',
+      '이메일 제목은 <b>내용을 간략히 요약한 문장</b>으로, 한 메일에 한 가지 내용, 회신은 24시간 이내',
+      '상급자 호칭 — 성+직위+님. 성명을 모르면 직위에 ‘님’ (“차장님”)',
+      '같은 직급이라도 먼저 입사했거나 나이가 많으면 ‘님’을 붙인다 (“박 대리님”)',
+      '<b>상급자에게 차상급자를 ‘~께서’로 높이는 것은 잘못된 표현</b>(과잉 존칭)',
+    ],
+    quiz:[
+      { q:'전화는 벨이 몇 번 울리기 전에 받는 것이 원칙인가?', opts:['1번','2번','3번','5번'], ans:2 },
+      { q:'이메일 제목 작성 원칙으로 옳은 것은?', opts:['최대한 길고 자세하게 쓴다','내용을 간략하게 요약한 문장으로 쓴다','제목 없이 본문에만 표기한다','이모티콘으로 강조한다'], ans:1 },
+      { q:'성명을 모르는 상급자를 부를 때 올바른 방식은?', opts:['직위에 ‘님’을 붙여 “차장님”으로 호명','“저기요”라고 부른다','이름 대신 “선배님”으로 부른다','직위 없이 성만 부른다'], ans:0 },
+      { q:'상급자에게 차상급자를 지칭하며 ‘~께서’라는 높임말을 쓰는 것은?', opts:['항상 올바른 표현이다','잘못된 표현이다(과잉 존칭)','구두로만 허용된다','부서에 따라 다르다'], ans:1 },
+    ]
+  },
+  {
+    id:'OB05', track:'의사소통', trackColor:'var(--purple)', badge:'required',
+    title:'보고와 스피치 스킬',
+    sub:'보고 시기 · 디브리핑 · SECO 화법',
+    time:'약 8분', level:'Lv.1 신규입사자',
+    objectives:[
+      '업무 진행 단계별 보고 시점(30%·70%·100%)을 구분할 수 있다',
+      '디브리핑의 개념과 효과를 설명할 수 있다',
+      'SECO 화법(S-E-C-O)에 맞춰 보고를 구성할 수 있다',
+    ],
+    pages:[
+      { f:'p11', cap:'업무 진행 시 보고 · 디브리핑' },
+      { f:'p12', cap:'일잘러의 스피치 — S.E.C.O. 말하기 방법' },
+    ],
+    key:[
+      '보고 3단계 — <b>중간보고(30%) → 완료보고(70%) → 피드백보고(100%)</b>',
+      '<b>디브리핑</b> — 리더의 지시를 제대로 이해했는지 자신의 언어로 다시 한 번 말하는 것',
+      '<b>S</b>ummary 결론·핵심 요약 → <b>E</b>vidence 이유·근거(수치·사실) → <b>C</b>ase 사례·대안 → <b>O</b>utcome 기대효과·요청사항',
+      '말의 첫머리에 핵심 메시지와 결론을 <b>한 문장</b>으로 먼저 말한다',
+    ],
+    quiz:[
+      { q:'업무 진행 시 보고 3단계를 순서대로 나열한 것은?', opts:['완료보고 → 중간보고 → 피드백보고','중간보고(30%) → 완료보고(70%) → 피드백보고(100%)','피드백보고 → 중간보고 → 완료보고','중간보고 → 피드백보고 → 완료보고'], ans:1 },
+      { q:'‘디브리핑’이란 무엇인가?', opts:['회의 후 작성하는 회의록','지시받은 내용을 자신의 언어로 다시 말해 제대로 이해했는지 확인하는 것','상사에게 업무 결과를 최종 보고하는 것','부서 간 정보를 공유하는 정기 미팅'], ans:1 },
+      { q:'SECO 화법에서 결론을 뒷받침하는 수치·사실·근거를 말하는 단계는?', opts:['Summary','Evidence','Case','Outcome'], ans:1 },
+      { q:'SECO 화법의 마지막 Outcome 단계에 들어갈 내용은?', opts:['배경 설명과 인사말','결론 재정리와 요청사항·실행 방향','참석자 소개','반대 의견 청취'], ans:1 },
+    ]
+  },
+
+  // ══ 트랙 4: 제도·복지·보안 ══
+  {
+    id:'OB06', track:'제도·복지·보안', trackColor:'var(--gold)', badge:'required',
+    title:'제도·복지·보안 필수정보',
+    sub:'사이버 대응요령 · 인사제도 · 직원복지',
+    time:'약 10분', level:'Lv.1 신규입사자',
+    objectives:[
+      '사이버 공격 발생 시 대응요령을 실행할 수 있다',
+      '인사제도의 원칙과 평가·승진 체계를 이해할 수 있다',
+      '교육체계와 직원 복지 제도를 파악할 수 있다',
+    ],
+    pages:[
+      { f:'p13', cap:'사이버 공격 시 대응요령' },
+      { f:'p14', cap:'인사 제도 — 원칙 · 평가 · 승진 · 교육' },
+      { f:'p15', cap:'직원 복지' },
+    ],
+    key:[
+      '사이버 공격 시 ❌ <b>절대 금지</b> — PC 완전끄기, 의심파일·링크 클릭',
+      '사이버 공격 시 ✅ <b>반드시</b> — 네트워크 즉시 해제(Wi-Fi 포함), IT담당자에게 즉시 신고',
+      '인사 원칙 — 업적과 역량 중심의 합리적·공정한 평가',
+      '평가 — <b>수시코칭 + 연 1회 평가</b>, 결과는 보상·승진·인재육성 전 영역에 활용',
+      '승진 — 정기승진(승진소요연한 도달자 심사) / 특별승진(능력우수자 발탁). 직급체계는 역할+역량 기준',
+      '교육 — 신규입사자 교육(온보딩 8~16H 자체 → 비전·미래전략 8H 소집), SECO IVY, 승진자 리더십, 공통역량',
+      '복지 — 월악산 유스호스텔 전 객실 15% 할인 / 태백 스피드웨이 카트·트랙주행 30% 할인',
+    ],
+    quiz:[
+      { q:'인사평가는 어떻게 실시되며 결과는 어디에 활용되는가?', opts:['수시코칭 + 연 1회 평가 / 보상·승진·인재육성 전 영역','연 2회 평가 / 급여 산정에만 활용','분기별 평가 / 승진에만 활용','평가 없이 연공서열로 결정'], ans:0 },
+      { q:'신규입사자 교육 체계의 순서로 옳은 것은?', opts:['비전·미래전략교육 → 온보딩 교육','온보딩 교육(8~16H 자체) → 비전·미래전략 교육(8H 소집)','두 교육을 동시에 진행','순서와 무관하게 진행'], ans:1 },
+      { q:'사이버 공격이 의심될 때 <b>절대 하지 말아야 할</b> 행동은?', opts:['IT담당자에게 즉시 신고','네트워크 연결 해제','의심 파일·링크 클릭','Wi-Fi 끄기'], ans:2 },
+      { q:'사이버 공격 발생이 의심될 때 반드시 해야 할 행동 두 가지는?', opts:['PC 완전 종료 후 재부팅','네트워크 즉시 해제 + 즉시 신고','백신 프로그램 삭제 후 재설치','동료에게 파일 전달해 확인 요청'], ans:1 },
+    ]
+  },
+];
+
+// ─── FIREBASE 설정 ────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8",
+  authDomain:        "ai-edu-seco.firebaseapp.com",
+  projectId:         "ai-edu-seco",
+  storageBucket:     "ai-edu-seco.firebasestorage.app",
+  messagingSenderId: "58934449948",
+  appId:             "1:58934449948:web:216a4d0adf255083bbccd9",
+  measurementId:     "G-8V5R5Z2Y44"
+};
+
+let db = null;
+const USER_KEY   = 'ob_portal_user_v1';
+const SCORES_KEY = 'ob_portal_scores_v1';
+
+let authReady = null;
+function initFirebase() {
+  if (!FIREBASE_CONFIG.projectId || FIREBASE_CONFIG.projectId === 'YOUR_PROJECT_ID') return false;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    // 보안 규칙이 인증을 요구하므로 접속 즉시 익명 로그인 (학습자 추가 입력 없음)
+    authReady = new Promise((resolve) => {
+      firebase.auth().onAuthStateChanged((u) => { if (u) resolve(u); });
+      firebase.auth().signInAnonymously().catch((e) => console.warn('[Auth] 익명 로그인 실패:', e));
+    });
+    return true;
+  } catch(e) { console.warn('[Firebase] 초기화 실패:', e); return false; }
+}
+
+function makeUid(email) {
+  let h = 0;
+  for (let i = 0; i < email.length; i++) { h = Math.imul(31, h) + email.charCodeAt(i) | 0; }
+  return 'u' + Math.abs(h).toString(36);
+}
+
+// ─── 로그인 ─────────────────────────────────────────────────────────────────
+function doLogin() {
+  const name    = document.getElementById('loginName').value.trim();
+  const company = document.getElementById('loginCompany').value;
+  const email   = document.getElementById('loginEmail').value.trim().toLowerCase();
+  if (!name || !company || !email || !email.includes('@')) {
+    alert('이름, 소속 회사, 이메일을 모두 입력해 주세요.');
+    return;
+  }
+  const user = { name, company, email, uid: makeUid(email), startedAt: Date.now() };
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  document.getElementById('loginOverlay').classList.add('hidden');
+  applyUserUI(user);
+  // 동일 이메일로 이미 학습한 기록이 클라우드에 있으면 진도를 이어받는다.
+  if (db) restoreProgressAndRefresh(user); else { renderHome(); updateGlobalProgress(); }
+}
+
+function applyUserUI(user) {
+  const el = document.getElementById('topbarUser');
+  if (!el) return;
+  el.style.display = 'flex';
+  document.getElementById('topbarAvatar').textContent  = user.name[0];
+  document.getElementById('topbarName').textContent    = user.name;
+  document.getElementById('topbarCompanyLabel').textContent = user.company;
+}
+
+function getCurrentUser() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
+}
+
+async function syncUserToFirebase(user) {
+  if (!db) return;
+  if (authReady) await authReady;
+  try {
+    await db.collection('onboarding_learners').doc(user.uid).set({
+      name: user.name, company: user.company, email: user.email,
+      eduTrack: 'onboarding',
+      startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedCount: getDoneCount(),
+      completionRate: Math.round(getDoneCount() / MODULES.length * 100),
+      totalModules: MODULES.length
+    }, { merge: true });
+  } catch(e) { console.warn('[Firebase] 사용자 저장 실패:', e); }
+}
+
+async function syncModuleToFirebase(id, score) {
+  const user = getCurrentUser();
+  if (!db || !user) return;
+  if (authReady) await authReady;
+  try {
+    // 중첩 map(modules:{M01:{...}})으로 저장한다. set+merge가 modules 맵 내부로 깊은 병합한다.
+    // (과거 코드는 set에 'modules.M01' 점-키를 넘겨 점이 글자그대로 필드명이 되는 버그가 있었음)
+    const update = {
+      lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedCount: getDoneCount(),
+      completionRate: Math.round(getDoneCount() / MODULES.length * 100),
+      modules: { [id]: { completed: true, completedAt: firebase.firestore.FieldValue.serverTimestamp(), score: score != null ? score : 0 } }
+    };
+    await db.collection('onboarding_learners').doc(user.uid).set(update, { merge: true });
+  } catch(e) { console.warn('[Firebase] 모듈 동기화 실패:', e); }
+}
+
+// 클라우드(Firestore)에 저장된 진도를 읽어와 로컬(localStorage)에 병합 복원한다.
+// 기기를 바꿔 접속해도 동일 이메일이면 진도가 이어진다. (완료여부는 OR 병합 — 한쪽이라도 완료면 완료)
+async function loadProgressFromFirebase(user) {
+  if (!db || !user) return false;
+  if (authReady) await authReady;
+  try {
+    const snap = await db.collection('onboarding_learners').doc(user.uid).get();
+    if (!snap.exists) return false;
+    const data = snap.data() || {};
+    // 진도가 'modules.M01' 납작한 점-필드(레거시) 또는 중첩 map 어느 쪽이든 모두 인식해 복원한다.
+    const mods = (data.modules && typeof data.modules === 'object') ? { ...data.modules } : {};
+    Object.keys(data).forEach(k => {
+      const mt = k.match(/^modules\.(.+)$/);
+      if (mt) mods[mt[1]] = data[k];
+    });
+    const p = getProgress();
+    const s = getScores();
+    let changed = false;
+    Object.keys(mods).forEach(id => {
+      const m = mods[id];
+      if (m && m.completed && !p[id]) {
+        p[id] = true;
+        s[id] = { score: (m.score != null ? m.score : 0), completedAt: Date.now() };
+        changed = true;
+      }
+    });
+    if (changed) { saveProgress(p); saveScores(s); }
+    return changed;
+  } catch(e) { console.warn('[Firebase] 진도 복원 실패:', e); return false; }
+}
+
+// 클라우드 진도를 복원한 뒤 화면을 갱신하고, 그 다음에 사용자 정보를 동기화한다.
+// (반드시 "복원 → 화면갱신 → 동기화" 순서여야 PC 재접속 시 0% 값으로 완료율을 덮어쓰지 않음)
+async function restoreProgressAndRefresh(user) {
+  await loadProgressFromFirebase(user);
+  if (currentModId) { loadModule(currentModId); } else { renderHome(); }
+  renderSidebar();
+  updateGlobalProgress();
+  syncUserToFirebase(user);
+}
+
+// ─── PROGRESS ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'ob_portal_progress_v1';
+function getProgress() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
+function saveProgress(p) { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+function getScores() { try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || {}; } catch { return {}; } }
+function saveScores(s) { localStorage.setItem(SCORES_KEY, JSON.stringify(s)); }
+function markDone(id, score) {
+  const p = getProgress(); p[id] = true; saveProgress(p);
+  const s = getScores(); s[id] = { score: score ?? 0, completedAt: Date.now() }; saveScores(s);
+  syncModuleToFirebase(id, score ?? 0);
+}
+function isDone(id) { return !!getProgress()[id]; }
+function getDoneCount() { return Object.values(getProgress()).filter(Boolean).length; }
+function getRequiredDoneCount() {
+  const p = getProgress();
+  return MODULES.filter(m=>m.badge==='required'&&p[m.id]).length;
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentModId = null;
+let quizAnswers = {};
+let quizSubmitted = false;
+
+// ─── SIDEBAR TOGGLE (모바일) ──────────────────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const btn     = document.getElementById('hamburgerBtn');
+  const isOpen  = sidebar.classList.contains('open');
+  if (isOpen) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+    btn.classList.remove('open');
+    btn.setAttribute('aria-label','메뉴 열기');
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    btn.classList.add('open');
+    btn.setAttribute('aria-label','메뉴 닫기');
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const btn     = document.getElementById('hamburgerBtn');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('show');
+  btn.classList.remove('open');
+  btn.setAttribute('aria-label','메뉴 열기');
+}
+
+function isMobile() { return window.innerWidth <= 768; }
+
+// ─── BOTTOM NAV ──────────────────────────────────────────────────────────────
+function setBottomNav(active) {
+  ['bnHome','bnList','bnProgress'].forEach(id=>{
+    document.getElementById(id)?.classList.remove('active');
+  });
+  if (active === 'home') document.getElementById('bnHome')?.classList.add('active');
+  if (active === 'list')     document.getElementById('bnList')?.classList.add('active');
+}
+
+// ─── RENDER SIDEBAR ──────────────────────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+  const tracks = [...new Set(MODULES.map(m=>m.track))];
+  let html = '';
+  tracks.forEach(track => {
+    const mods = MODULES.filter(m=>m.track===track);
+    const color = mods[0].trackColor;
+    html += `<div class="track-label" style="color:${color}">${track}</div>`;
+    mods.forEach(m => {
+      const done = isDone(m.id);
+      const active = m.id === currentModId;
+      const badgeText = '필수';
+      html += `
+        <div class="mod-item ${done?'done':''} ${active?'active':''}" onclick="loadModuleAndClose('${m.id}')">
+          <div class="mod-icon" style="${active?`background:${color};color:#fff`:''}${done&&!active?`background:var(--green);color:#fff`:''}">
+            ${done?'✓':m.id.replace('OB','')}
+          </div>
+          <div class="mod-info">
+            <div class="mod-title">${m.title}</div>
+            <div class="mod-meta">${m.time} · ${m.level}</div>
+          </div>
+          <span class="mod-badge badge-${done?'done':m.badge}">${done?'완료':badgeText}</span>
+        </div>`;
+    });
+  });
+  list.innerHTML = html;
+}
+
+// 모바일에서 모듈 선택 시 사이드바 자동 닫기
+function loadModuleAndClose(id) {
+  loadModule(id);
+  if (isMobile()) {
+    closeSidebar();
+    setBottomNav('home');
+  }
+}
+
+// ─── RENDER GLOBAL PROGRESS ──────────────────────────────────────────────────
+function updateGlobalProgress() {
+  const total = MODULES.length;
+  const done = getDoneCount();
+  const pct = Math.round(done/total*100);
+  document.getElementById('globalFill').style.width = pct + '%';
+  document.getElementById('globalPct').textContent = pct + '%';
+}
+
+// ─── RENDER HOME ─────────────────────────────────────────────────────────────
+function renderHome() {
+  currentModId = null;
+  document.getElementById('championSidebarItem')?.classList.remove('active');
+  const done = getDoneCount();
+  const reqDone = getRequiredDoneCount();
+  const tracks = [...new Set(MODULES.map(m=>m.track))];
+  let trackCards = '';
+  tracks.forEach(track => {
+    const mods = MODULES.filter(m=>m.track===track);
+    const color = mods[0].trackColor;
+    const tdone = mods.filter(m=>isDone(m.id)).length;
+    const pct = Math.round(tdone/mods.length*100);
+    trackCards += `
+      <div class="track-card">
+        <div class="track-card-title" style="color:${color}">${track}</div>
+        <div class="track-card-desc">${mods.length}개 모듈 · ${mods[0].level} 외</div>
+        <div class="track-progress">
+          <div class="track-pb"><div class="track-pb-fill" style="width:${pct}%;background:${color}"></div></div>
+          <span class="track-pct" style="color:${color}">${tdone}/${mods.length}</span>
+        </div>
+      </div>`;
+  });
+  document.getElementById('contentArea').innerHTML = `
+    <div class="home-hero">
+      <h1>🌱 SECO 신규입사자<br>온보딩 학습 포털</h1>
+      <p>입사 첫 주 자가학습 · 총 ${MODULES.length}개 모듈 · 약 56분 · 모바일에서 바로 학습</p>
+      <div class="home-stat-row">
+        <div class="home-stat"><div class="home-stat-val">${MODULES.length}</div><div class="home-stat-label">전체 모듈</div></div>
+        <div class="home-stat"><div class="home-stat-val">${MODULES.reduce((a,m)=>a+(m.pages?m.pages.length:0),0)}</div><div class="home-stat-label">매뉴얼 쪽</div></div>
+        <div class="home-stat"><div class="home-stat-val">${done}</div><div class="home-stat-label">완료</div></div>
+        <div class="home-stat"><div class="home-stat-val">${reqDone}/${MODULES.length}</div><div class="home-stat-label">필수 이수</div></div>
+      </div>
+    </div>
+    <div class="track-cards">${trackCards}</div>
+    ${done===0?`<button class="start-btn" onclick="loadModuleAndClose('OB01')">▶ OB01부터 학습 시작</button>`:''}
+    ${reqDone>=MODULES.length&&done>0?`
+    <div class="cert-box">
+      <div style="font-size:28px;margin-bottom:6px;">🏆</div>
+      <div class="cert-title">온보딩 자가학습 완료</div>
+      <div class="cert-sub">6개 온보딩 모듈을 모두 완료했습니다</div>
+      <div class="cert-name">SECO 신규입사자 온보딩 이수</div>
+      <div class="cert-date">${new Date().toLocaleDateString('ko-KR')} 기준</div>
+      <div class="cert-modules" style="margin-top:12px;">
+        ${MODULES.filter(m=>isDone(m.id)).map(m=>`<span style="font-size:11px;background:var(--green-dim);color:var(--green);padding:3px 8px;border-radius:4px;font-weight:700;">${m.id} ${m.title}</span>`).join('')}
+      </div>
+    </div>`:''}
+  `;
+  renderSidebar();
+  updateGlobalProgress();
+}
+
+// ─── RENDER MODULE ────────────────────────────────────────────────────────────
+function loadModule(id) {
+  currentModId = id;
+  document.getElementById('championSidebarItem')?.classList.remove('active');
+  quizAnswers = {};
+  quizSubmitted = false;
+  renderSidebar();
+  const m = MODULES.find(x=>x.id===id);
+  if (!m) return;
+  const done = isDone(id);
+  const idx = MODULES.findIndex(x=>x.id===id);
+  const prev = idx>0 ? MODULES[idx-1] : null;
+  const next = idx<MODULES.length-1 ? MODULES[idx+1] : null;
+  const colorStyle = `background:${m.trackColor}`;
+  const quizHtml = renderQuiz(m, done);
+  document.getElementById('contentArea').innerHTML = `
+    <div class="mod-header">
+      <div class="mod-header-top">
+        <div class="mod-num-big" style="${colorStyle}">${m.id}</div>
+        <div class="mod-header-info">
+          <h2>${m.title}</h2>
+          <p>${m.sub} · ${m.time} · ${m.level}</p>
+        </div>
+      </div>
+      <div class="mod-tags">
+        <span class="tag" style="background:${m.trackColor}22;color:${m.trackColor};border:1px solid ${m.trackColor}44">${m.track}</span>
+        <span class="tag" style="background:var(--border);color:var(--gray);">${m.time}</span>
+        ${done?`<span class="tag" style="background:var(--green-dim);color:var(--green);">✓ 이수 완료</span>`:''}
+      </div>
+    </div>
+    ${renderSlides(m)}
+    <div class="obj-box">
+      <h4>📌 이 모듈의 학습 목표</h4>
+      <ul class="obj-list">
+        ${m.objectives.map(o=>`<li>${o}</li>`).join('')}
+      </ul>
+    </div>
+    <div class="quiz-section" id="quizSection">
+      <h3>📝 학습 확인 퀴즈 <span style="font-size:12px;color:var(--gray);font-weight:500;">(${m.quiz.length}문항 · 70점 이상 통과)</span></h3>
+      ${quizHtml}
+      <button class="quiz-submit" id="quizSubmitBtn" onclick="submitQuiz('${id}')" disabled>제출하기</button>
+      <div id="quizResult"></div>
+    </div>
+    <div class="nav-row" style="margin-top:16px;">
+      <button class="btn-prev" ${!prev?'disabled':''} onclick="${prev?`loadModuleAndClose('${prev.id}')`:''}">← 이전</button>
+      <button class="btn-next" id="nextBtn" ${!done?'style="opacity:.3;cursor:default;"':''} onclick="${next?`loadModuleAndClose('${next.id}')`:'renderHome()'}">
+        ${next?'다음 모듈 →':'홈으로 →'}
+      </button>
+    </div>
+  `;
+  if (done) showQuizDone(m);
+  document.querySelector('.content').scrollTop = 0;
+}
+
+// ─── CONTENT (온보딩 매뉴얼 원본 페이지 이미지 + 핵심 정리) ──────────────────
+function renderSlides(m) {
+  var out = '';
+  if (m.pages && m.pages.length) {
+    out += '<div class="page-deck">';
+    out += '<div class="page-deck-head">📖 온보딩 매뉴얼 <span>' + m.pages.length + '쪽 · 이미지를 누르면 확대됩니다</span></div>';
+    out += m.pages.map(function(p, i) {
+      return '<figure class="page-fig">'
+           + '<img class="page-img" src="img/' + p.f + '.jpg" alt="' + p.cap + '" loading="lazy"'
+           + ' onclick="zoomPage(\'' + p.f + '\',\'' + p.cap.replace(/'/g, "\\'") + '\')">'
+           + '<figcaption class="page-cap"><span class="page-no">' + (i+1) + '</span>' + p.cap + '</figcaption>'
+           + '</figure>';
+    }).join('');
+    out += '</div>';
+  }
+  if (m.key && m.key.length) {
+    out += '<div class="key-box"><h4>✅ 핵심 정리 <span>퀴즈 전에 꼭 확인하세요</span></h4><ul class="key-list">'
+         + m.key.map(function(k){ return '<li>' + k + '</li>'; }).join('')
+         + '</ul></div>';
+  }
+  return out;
+}
+
+// 매뉴얼 페이지 확대 보기 (라이트박스)
+function zoomPage(f, cap) {
+  var lb = document.getElementById('pageLightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'pageLightbox';
+    lb.className = 'lightbox';
+    lb.onclick = function(e){ if (e.target.tagName !== 'IMG') closeZoom(); };
+    lb.innerHTML = '<button class="lightbox-close" onclick="closeZoom()" aria-label="닫기">✕ 닫기</button>'
+                 + '<div class="lightbox-cap" id="lightboxCap"></div>'
+                 + '<div class="lightbox-scroll"><img id="lightboxImg" alt=""></div>';
+    document.body.appendChild(lb);
+  }
+  document.getElementById('lightboxImg').src = 'img/' + f + '.jpg';
+  document.getElementById('lightboxCap').textContent = cap;
+  lb.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeZoom() {
+  var lb = document.getElementById('pageLightbox');
+  if (lb) lb.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// ─── QUIZ ────────────────────────────────────────────────────────────────────
+function renderQuiz(m, readonly) {
+  return m.quiz.map((q,qi)=>`
+    <div class="quiz-q" id="qq${qi}">
+      <div class="quiz-q-text">Q${qi+1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.opts.map((opt,oi)=>`
+          <div class="quiz-opt ${readonly?(oi===q.ans?'correct disabled':'disabled'):''}" id="opt_${qi}_${oi}"
+               onclick="${readonly?'':'selectOpt('+qi+','+oi+')'}" data-qi="${qi}" data-oi="${oi}">
+            <div class="quiz-opt-label">${String.fromCharCode(65+oi)}</div>
+            ${opt}
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function selectOpt(qi, oi) {
+  if (quizSubmitted) return;
+  const m = MODULES.find(x=>x.id===currentModId);
+  m.quiz[qi].opts.forEach((_,i)=>{ document.getElementById(`opt_${qi}_${i}`)?.classList.remove('selected'); });
+  document.getElementById(`opt_${qi}_${oi}`)?.classList.add('selected');
+  quizAnswers[qi] = oi;
+  const allAnswered = m.quiz.every((_,i)=>quizAnswers[i]!==undefined);
+  document.getElementById('quizSubmitBtn').disabled = !allAnswered;
+}
+
+function submitQuiz(id) {
+  if (quizSubmitted) return;
+  quizSubmitted = true;
+  const m = MODULES.find(x=>x.id===id);
+  let correct = 0;
+  m.quiz.forEach((q,qi)=>{
+    const chosen = quizAnswers[qi];
+    q.opts.forEach((_,oi)=>{
+      const el = document.getElementById(`opt_${qi}_${oi}`);
+      if (!el) return;
+      el.classList.add('disabled');
+      if (oi===q.ans) el.classList.add('correct');
+      else if (oi===chosen && chosen!==q.ans) el.classList.add('wrong');
+    });
+    if (chosen===q.ans) correct++;
+  });
+  const score = Math.round(correct/m.quiz.length*100);
+  const pass = score>=67;
+  const resultEl = document.getElementById('quizResult');
+  document.getElementById('quizSubmitBtn').style.display='none';
+  if (pass) {
+    markDone(id, score);
+    renderSidebar();
+    updateGlobalProgress();
+    resultEl.innerHTML = `<div class="quiz-result pass">🎉 통과! ${correct}/${m.quiz.length} 정답 (${score}점) — 이수 처리 완료</div>`;
+    document.getElementById('nextBtn').style.opacity='1';
+    document.getElementById('nextBtn').style.cursor='pointer';
+  } else {
+    resultEl.innerHTML = `
+      <div class="quiz-result fail">❌ ${correct}/${m.quiz.length} 정답 (${score}점) — 70점 미만, 학습 내용을 다시 확인 후 재시도하세요</div>
+      <button class="quiz-retry" onclick="retryQuiz('${id}')">🔄 다시 풀기</button>
+    `;
+  }
+}
+
+function retryQuiz(id) {
+  quizAnswers = {};
+  quizSubmitted = false;
+  const m = MODULES.find(x=>x.id===id);
+  document.getElementById('quizSection').innerHTML = `
+    <h3>📝 학습 확인 퀴즈 <span style="font-size:12px;color:var(--gray);font-weight:500;">(${m.quiz.length}문항 · 70점 이상 통과)</span></h3>
+    ${renderQuiz(m, false)}
+    <button class="quiz-submit" id="quizSubmitBtn" onclick="submitQuiz('${id}')" disabled>제출하기</button>
+    <div id="quizResult"></div>
+  `;
+}
+
+function showQuizDone(m) {
+  const submitBtn = document.getElementById('quizSubmitBtn');
+  if (submitBtn) submitBtn.style.display='none';
+  const resultEl = document.getElementById('quizResult');
+  if (resultEl) resultEl.innerHTML = `<div class="quiz-result pass">✓ 이미 이수 완료된 모듈입니다</div>`;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+initFirebase();
+const _savedUser = getCurrentUser();
+renderHome();
+updateGlobalProgress();
+if (_savedUser) {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  applyUserUI(_savedUser);
+  // 접속 시 클라우드 진도를 먼저 복원한 뒤 화면을 갱신한다. (기기 변경 시에도 진도 유지)
+  if (db) restoreProgressAndRefresh(_savedUser);
+}
+
+// 키보드 ESC로 사이드바 닫기
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeZoom(); closeSidebar(); }
+});
+
+// 화면 크기 변경 시 사이드바 정리
+window.addEventListener('resize', function() {
+  if (!isMobile()) closeSidebar();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI DX 오프라인 심화캠프 결과보고서 · HR-2026-DX-교육-10</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#E82076;
+    --ink:#1f2330; --sub:#55585f; --gray:#77797f; --mute:#9a9ca2;
+    --line:#e2e3e6; --soft:#f5f6f7; --soft2:#eceef0;
+    --ok:#0f9d58; --warn:#e8a020; --bad:#d93025;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    word-break:keep-all; overflow-wrap:break-word;
+    color:var(--ink); background:#e9ebee;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  p,li,td,th,div,span,a,h1,h2,h3,h4,h5,h6{font-family:inherit; word-break:keep-all; overflow-wrap:break-word;}
+
+  .page{
+    width:297mm; height:210mm; background:#fff; margin:12px auto; padding:7mm 11mm 6mm;
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    box-shadow:0 3px 16px rgba(0,0,0,.10);
+  }
+
+  .conf{background:var(--soft2);color:#6b6e74;font-size:10px;font-weight:700;
+    text-align:center;letter-spacing:.3px;padding:5px 0;border-radius:4px;margin-bottom:6px;}
+
+  .head{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--pink);padding-bottom:6px;}
+  .brand-line{display:flex;align-items:center;gap:9px;}
+  .accent-bar{width:5px;height:21px;background:var(--pink);border-radius:2px;}
+  .affiliate{font-size:18px;font-weight:900;color:var(--ink);letter-spacing:-.3px;}
+  .title-line{display:flex;align-items:baseline;gap:11px;margin-top:6px;}
+  .doc-title{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--ink);line-height:1.1;}
+  .doc-title b{color:var(--pink);}
+  .head-meta{text-align:right;flex-shrink:0;}
+  .docno{font-size:13.5px;font-weight:900;color:var(--pink);letter-spacing:.3px;}
+  .meta-sub{font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.5;}
+  .meta-sub b{color:var(--ink);}
+
+  /* 리드 + 지표 */
+  .summary{display:flex;gap:12px;align-items:stretch;margin-top:5px;}
+  .summary-msg{flex:1.05;background:var(--soft);border:1px solid var(--line);border-left:5px solid var(--pink);
+    border-radius:9px;padding:6px 15px;display:flex;flex-direction:column;justify-content:center;}
+  .lead-label{font-size:10px;font-weight:900;color:var(--pink);letter-spacing:1px;line-height:1.2;}
+  .lead-line{font-size:14.5px;font-weight:900;color:var(--ink);line-height:1.3;margin-top:3px;}
+  .lead-sub{font-size:10px;color:var(--sub);margin-top:4px;line-height:1.45;}
+  .summary-metrics{flex:1.25;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .met{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:7px 11px;
+    display:flex;flex-direction:column;justify-content:center;}
+  .met .v{font-size:18px;font-weight:900;color:var(--ink);line-height:1.05;}
+  .met .v small{font-size:10.5px;color:var(--gray);font-weight:700;}
+  .met .l{font-size:8.5px;color:var(--gray);margin-top:4px;font-weight:600;line-height:1.35;}
+  .met.hl .v{color:var(--pink);}
+
+  .stitle{display:flex;align-items:center;gap:8px;margin:4px 0 3px;}
+  .stitle .bar{width:4px;height:14px;background:var(--pink);border-radius:2px;}
+  .stitle h2{font-size:12.5px;font-weight:900;color:#232733;letter-spacing:.3px;line-height:1.15;}
+  .stitle .note{font-size:9px;color:var(--gray);margin-left:auto;font-weight:500;}
+
+  /* 개요 스트립 */
+  .ov{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .ov .cell{border:1px solid var(--line);border-radius:7px;padding:6px 10px;background:#fff;}
+  .ov .k{font-size:8.5px;font-weight:900;color:var(--pink);letter-spacing:.3px;}
+  .ov .v{font-size:10px;color:var(--ink);font-weight:600;margin-top:3px;line-height:1.35;}
+
+  /* 본문 2단 */
+  .main-grid{display:grid;grid-template-columns:0.82fr 1.18fr;gap:12px;margin-top:0;}
+  .bbox{border:1px solid var(--line);border-radius:8px;padding:5px 12px;background:#fff;}
+  .bbox .bh{font-size:10.5px;font-weight:900;letter-spacing:.3px;margin-bottom:6px;color:var(--pink);
+    display:flex;align-items:center;gap:6px;}
+  .bbox .bh::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--pink);display:inline-block;}
+  .bbox .bh .rt{margin-left:auto;font-size:9px;color:var(--gray);font-weight:700;}
+
+  /* 소속별 참석 인원 */
+  .comp-row{display:flex;align-items:baseline;gap:8px;padding:1.6px 0;
+    border-bottom:1px dotted var(--soft2);font-size:10px;}
+  .comp-row:last-child{border-bottom:none;}
+  .comp-row .nm{color:#3d4148;font-weight:600;}
+  .comp-row .ct{margin-left:auto;font-weight:900;color:var(--ink);font-size:11px;}
+  .comp-row .ct small{font-size:8.5px;color:var(--gray);font-weight:700;margin-left:1px;}
+
+  /* 트랙 요약 */
+  .trk{display:flex;align-items:flex-start;gap:8px;padding:1px 0;border-bottom:1px dashed var(--soft2);}
+  .trk:last-child{border-bottom:none;}
+  .trk .badge{flex-shrink:0;font-size:8.5px;font-weight:900;color:#fff;background:var(--pink);
+    padding:2px 7px;border-radius:4px;margin-top:1px;}
+  .trk .badge.g{background:#6b6e74;}
+  .trk .tx{font-size:9.5px;line-height:1.25;color:#3d4148;}
+  .trk .tx b{color:var(--ink);font-weight:800;}
+  .trk .tx .who{color:var(--gray);font-size:8.2px;display:block;margin-top:1px;line-height:1.3;}
+
+  /* 과제 테이블 */
+  .mini-table{width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;}
+  .mini-table th{background:var(--soft2);padding:3px 6px;font-weight:900;color:#33363d;
+    text-align:left;font-size:8.5px;}
+  .mini-table td{padding:0.8px 6px;border-bottom:1px solid var(--soft2);vertical-align:top;line-height:1.18;}
+  .mini-table tr:last-child td{border-bottom:none;}
+  .mini-table .co{color:var(--gray);font-size:8px;}
+  .mini-table .nm{font-weight:800;}
+  /* 산출물 제출분 표시 — 화면에서는 링크, 인쇄물에서는 제출 표식으로 읽힌다 */
+  .sub-link{display:inline-block;margin-left:5px;font-size:7px;font-weight:900;
+    color:var(--ok);background:#e6f4ec;border-radius:3px;padding:0 4px;
+    text-decoration:none;vertical-align:1px;white-space:nowrap;}
+
+  /* 후속 조치 */
+  .act-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:1px;}
+  .act{border:1px solid var(--line);border-left:4px solid var(--pink);border-radius:7px;padding:5px 9px;background:#fff;}
+  .act.wait{border-left-color:var(--warn);}
+  .act.risk{border-left-color:var(--bad);}
+  .act .ah{font-size:9.3px;font-weight:900;color:var(--ink);line-height:1.2;}
+  .act .an{font-size:8.2px;color:var(--gray);margin-top:2px;line-height:1.3;}
+  .act .an b{color:var(--pink);font-weight:800;}
+  .act .due{display:inline-block;margin-top:5px;font-size:8px;font-weight:900;color:var(--pink);
+    background:var(--soft);border-radius:3px;padding:2px 6px;}
+  .act.wait .due{color:var(--warn);}
+  .act.risk .due{color:var(--bad);}
+
+  .foot{margin-top:auto;padding-top:6px;border-top:1px solid var(--line);display:flex;
+    justify-content:space-between;align-items:center;font-size:10px;color:var(--sub);}
+  .foot .fno{font-weight:800;color:var(--gray);}
+
+  @page{size:A4 landscape;margin:0;}
+  @media print{
+    html,body{background:#fff;}
+    .page{margin:0;box-shadow:none;width:297mm;height:210mm;overflow:hidden;}
+    .conf,.head,.summary,.ov,.bbox,.act,.main-grid{page-break-inside:avoid;break-inside:avoid;}
+    .stitle,h2,.lead-line{page-break-after:avoid;break-after:avoid;}
+    .mini-table tr{page-break-inside:avoid;break-inside:avoid;}
+    thead{display:table-header-group;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="conf">내부 한정 · 경영진 보고용</div>
+
+  <!-- 헤더 -->
+  <div class="head">
+    <div>
+      <div class="brand-line"><span class="accent-bar"></span><span class="affiliate">비제조부문 인사팀</span></div>
+      <div class="title-line">
+        <span class="doc-title">AI DX 오프라인 심화캠프 <b>결과보고서</b></span>
+      </div>
+    </div>
+    <div class="head-meta">
+      <div class="docno">HR-2026-DX-교육-10</div>
+      <div class="meta-sub">교육일 <b>2026. 8. 13.(목)</b> · 작성 2026. 8. 14.</div>
+    </div>
+  </div>
+
+  <!-- 리드 + 핵심지표 -->
+  <div class="summary">
+    <div class="summary-msg">
+      <div class="lead-label">RESULT</div>
+      <div class="lead-line">계획 대비 100% 실행 — 대상 23명 전원 참석</div>
+      <div class="lead-sub">8/13 1일 심화캠프를 계획대로 완료. 국비지원 연계 트랙2 추가 편성 5명을 포함해 <b>대상자 23명 전원이 참석</b>했고,
+        두 개 트랙에서 각자의 실제 업무 과제를 실습 주제로 다뤘다. 캠프의 교육 목표인 <b>개인별 DX 과제 산출물</b>은
+        현재 제출 요청 단계로, 본 보고서는 실행 결과와 후속 계획 중심의 중간보고다.</div>
+    </div>
+    <div class="summary-metrics">
+      <div class="met hl"><div class="v">23<small>/23명</small></div><div class="l">참석률 100%<br>(목표 85% 상회)</div></div>
+      <div class="met"><div class="v">16<small>/23명</small></div><div class="l">DX 과제 선정 완료<br>선정률 70%</div></div>
+      <div class="met"><div class="v">78<small>%</small></div><div class="l">온라인 사전학습 평균*<br>100% 이수 11명(18명 중)</div></div>
+      <div class="met"><div class="v">23<small>/23명</small></div><div class="l">국비지원 과정 연계<br>미등록 0명</div></div>
+    </div>
+  </div>
+
+  <!-- 교육 개요 -->
+  <div class="stitle"><span class="bar"></span><h2>교육 개요</h2><span class="note">HR-2026-DX-교육-07 시행계획 기준</span></div>
+  <div class="ov">
+    <div class="cell"><div class="k">일시</div><div class="v">2026. 8. 13.(목) 1일 과정</div></div>
+    <div class="cell"><div class="k">장소</div><div class="v">좋은사람들 회의실</div></div>
+    <div class="cell"><div class="k">대상</div><div class="v">비제조부문 7개사 23명</div></div>
+    <div class="cell"><div class="k">운영 방식</div><div class="v">2개 트랙 분반 · 과제 기반 실습</div></div>
+    <div class="cell"><div class="k">촉진</div><div class="v">이광현(트랙1) · 권민호(트랙2)</div></div>
+  </div>
+
+  <!-- 본문 2단 -->
+  <div class="main-grid">
+
+    <!-- 좌: 참석 결과 + 트랙 운영 -->
+    <div>
+      <div class="stitle"><span class="bar"></span><h2>참석 결과</h2><span class="note">소속사별</span></div>
+      <div class="bbox">
+        <div class="bh">계열사별 참석 인원<span class="rt">전원 참석 · 23명</span></div>
+        <div class="comp-row"><span class="nm">좋은사람들</span><span class="ct">8<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">메가라인</span><span class="ct">5<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">인베스터유나이티드</span><span class="ct">3<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">휴맥스</span><span class="ct">2<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">상일식품</span><span class="ct">2<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">쌤앤파커스</span><span class="ct">2<small>명</small></span></div>
+        <div class="comp-row"><span class="nm">우리인터텍스</span><span class="ct">1<small>명</small></span></div>
+      </div>
+
+      <div class="stitle"><span class="bar"></span><h2>트랙 운영 결과</h2><span class="note">분반 배정 기준</span></div>
+      <div class="bbox">
+        <div class="trk"><span class="badge">트랙 1</span><span class="tx"><b>업무자동화 · 웹서비스</b> — 8명
+          <span class="who">최우진 · 이경원 · 임대한 · 김선호 · 유정우 · 김민지 · 김선홍 · 김유경</span></span></div>
+        <div class="trk"><span class="badge">트랙 2</span><span class="tx"><b>데이터 대시보드</b> — 14명
+          <span class="who">구지우 · 황정원 · 박형민 · 지기택 · 윤영은 · 김상진 · 신수용 · 김현우(상일) · 김현우(쌤앤) · 최진욱 · 박정수 · 김수빈 · 최승준 · 최정훈(메가라인 국비지원 5명 추가 편성)</span></span></div>
+        <div class="trk"><span class="badge g">챔피언</span><span class="tx"><b>트랙 챔피언(조 리드)</b> — 1명
+          <span class="who">이광현 — 트랙 운영 지원 및 조별 실습 촉진</span></span></div>
+      </div>
+    </div>
+
+    <!-- 우: DX 과제 선정 현황 -->
+    <div>
+      <div class="stitle"><span class="bar"></span><h2>선정 DX 과제 현황</h2><span class="note">회신 완료 16명 · 메가라인 5명 수집 중</span></div>
+      <div class="bbox" style="padding:7px 10px;">
+        <table class="mini-table">
+          <thead>
+            <tr><th style="width:8%">성명</th><th style="width:16%">소속</th><th>선정 DX 과제</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="nm">구지우</td><td class="co">좋은사람들</td><td>AI 기반 패션 트렌드 데이터 수집·대시보드 / 의류 디자인 작업지시서 자동화</td></tr>
+            <tr><td class="nm">황정원</td><td class="co">좋은사람들</td><td>자사몰 신제품 카테고리·필터 자동 생성</td></tr>
+            <tr><td class="nm">이경원</td><td class="co">좋은사람들</td><td>ERP 분산 제품정보 통합 및 고객용 제품카드 자동화</td></tr>
+            <tr><td class="nm">임대한</td><td class="co">좋은사람들</td><td>AI 기반 온라인 상품 소싱·기획 심층분석 자동화 시스템</td></tr>
+            <tr><td class="nm">최우진</td><td class="co">좋은사람들</td><td>마켓센싱 업무 자동화</td></tr>
+            <tr><td class="nm">박형민</td><td class="co">좋은사람들</td><td>영업 실적 자동 집계·AI 매출 인사이트 / 재고 리스크 조기경보</td></tr>
+            <tr><td class="nm">김선호</td><td class="co">휴맥스</td><td>영업 타겟 거래처 정보 DB 자동화</td></tr>
+            <tr><td class="nm">유정우</td><td class="co">휴맥스</td><td>선사 운임 정보 자동 정리 시스템</td></tr>
+            <tr><td class="nm">윤영은</td><td class="co">인베스터유나이티드</td><td>비제조계열사 손익관리 대시보드 구축</td></tr>
+            <tr><td class="nm">김상진</td><td class="co">인베스터유나이티드</td><td>경제동향·인수합병 Weekly 분석 리포트 자동 생성</td></tr>
+            <tr><td class="nm">신수용</td><td class="co">인베스터유나이티드</td><td>비제조부문 각사별 채권 연령 통합 관리 대시보드</td></tr>
+            <tr><td class="nm">김민지</td><td class="co">우리인터텍스</td><td>일잘러를 위한 클로드 코드 입문 바이블</td></tr>
+            <tr><td class="nm">김현우</td><td class="co">상일식품</td><td>부서별 대표파일 분석기 구축(생산일보 우선)<a class="sub-link" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EA%B9%80%ED%98%84%EC%9A%B0_%EC%83%81%EC%9D%BC%EC%8B%9D%ED%92%88/Smart_%EC%88%98%EB%B6%88%EB%B6%84%EC%84%9D%EA%B8%B0_V10_%EC%98%88%EC%8B%9C_%EC%8A%A4%EB%83%85%EC%83%B7.html" target="_blank" rel="noopener">산출물 제출</a></td></tr>
+            <tr><td class="nm">김선홍</td><td class="co">상일식품</td><td>GAS 기반 품질점검 자동화 시스템</td></tr>
+            <tr><td class="nm">김현우</td><td class="co">쌤앤파커스</td><td>외주 제작 반복업무 자동화 및 데이터 분석·대시보드</td></tr>
+            <tr><td class="nm">김유경</td><td class="co">쌤앤파커스</td><td>AI 기반 업무 문서 자동화 시스템 구축</td></tr>
+            <tr><td class="nm">최진욱</td><td class="co">메가라인</td><td style="color:var(--mute)">수집 중</td></tr>
+            <tr><td class="nm">박정수</td><td class="co">메가라인</td><td style="color:var(--mute)">수집 중</td></tr>
+            <tr><td class="nm">김수빈</td><td class="co">메가라인</td><td style="color:var(--mute)">수집 중</td></tr>
+            <tr><td class="nm">최승준</td><td class="co">메가라인</td><td style="color:var(--mute)">수집 중</td></tr>
+            <tr><td class="nm">최정훈</td><td class="co">메가라인</td><td style="color:var(--mute)">수집 중</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 후속 조치 -->
+  <div class="stitle"><span class="bar"></span><h2>후속 조치</h2><span class="note">교육 목표 달성을 위한 실행 과제</span></div>
+  <div class="act-grid">
+    <div class="act wait">
+      <div class="ah">① DX 과제 산출물 제출</div>
+      <div class="an">선정 완료 16명 중 <b>1명 제출</b>(상일식품 김현우). 나머지 15명 제출 요청 진행.</div>
+      <div class="due">제출 1/16명</div>
+    </div>
+    <div class="act">
+      <div class="ah">② 미선정 7명 과제 확정</div>
+      <div class="an">이광현 · 지기택 · 최진욱 · 박정수 · 김수빈 · 최승준 · 최정훈. 캠프 중 탐색한 주제를 <b>개별 면담으로 확정</b>(메가라인 5명은 국비지원 과정과 별도로 확정 필요).</div>
+      <div class="due">과제 확정 필요</div>
+    </div>
+    <div class="act risk">
+      <div class="ah">③ 온라인 사전학습 보완</div>
+      <div class="an">사내 학습 대상 18명 중 100% 이수 11명 / 미이수 7명. 이수율 <b>0% 1명</b>(이광현) 등 편차가 실습 몰입도 차이로 이어짐. 메가라인 5명은 국비지원 과정으로 사내 이수율 집계 대상 아님.</div>
+      <div class="due">이수 독려 대상 7명</div>
+    </div>
+    <div class="act">
+      <div class="ah">④ 국비지원 연계 완료</div>
+      <div class="an">잔여 대상자 23명 전원 국비지원 과정 <b>등록 완료</b>(미등록 0명). 별도 조치 불요 — 이수 진행 상황만 모니터링.</div>
+      <div class="due">모니터링만</div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <div class="foot">
+    <div>비제조부문 인사팀 · 담당 권민호</div>
+    <div class="fno">HR-2026-DX-교육-10 · 2026. 8. 14. 작성 (산출물 미수집 중간보고)</div>
+  </div>
+
+</div>
+
+</body>
+</html>

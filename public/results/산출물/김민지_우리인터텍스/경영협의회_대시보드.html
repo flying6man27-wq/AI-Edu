@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경영협의회 분석 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);min-height:100vh;padding:20px;color:#333}
+.container{max-width:1600px;margin:0 auto}
+.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:30px;border-radius:12px;margin-bottom:24px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.header h1{font-size:2.2em;margin-bottom:8px;font-weight:700}
+.header p{font-size:1.05em;opacity:.95}
+.tab-container{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:24px;overflow:hidden}
+.tab-buttons{display:flex;border-bottom:2px solid #e5e7eb;overflow-x:auto}
+.tab-btn{flex:1;min-width:190px;padding:16px 18px;background:#fff;border:none;cursor:pointer;font-size:1em;font-weight:600;color:#666;transition:all .25s;border-bottom:3px solid transparent}
+.tab-btn:hover{background:#f9fafb;color:#667eea}
+.tab-btn.active{color:#667eea;border-bottom-color:#667eea}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.chart-section{background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:24px}
+.chart-section h3{font-size:1.3em;margin-bottom:20px;color:#222;border-bottom:2px solid #667eea;padding-bottom:12px}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:28px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-bottom:24px}
+.kpi-card{background:#fff;padding:22px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);border-left:5px solid #667eea;transition:transform .25s,box-shadow .25s}
+.kpi-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(0,0,0,.15)}
+.kpi-card.blue{border-left-color:#667eea}.kpi-card.orange{border-left-color:#f59e0b}
+.kpi-card.green{border-left-color:#10b981}.kpi-card.red{border-left-color:#ef4444}
+.kpi-label{font-size:.85em;color:#666;margin-bottom:8px;letter-spacing:.3px;font-weight:600}
+.kpi-value{font-size:1.8em;font-weight:700;color:#222;line-height:1.25}
+.kpi-value.neg{color:#ef4444}
+.kpi-unit{font-size:.85em;color:#999;margin-top:4px}
+.month-selector{background:#fff;padding:18px 22px;border-radius:12px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,.08);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.month-selector select{padding:10px 14px;border:2px solid #667eea;border-radius:6px;font-size:1em;cursor:pointer;background:#fff;color:#333}
+.table-section{background:#fff;border-radius:12px;overflow-x:auto;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+table{width:100%;border-collapse:collapse}
+thead{background:#f3f4f6}
+th,td{padding:12px 16px;text-align:right;border-bottom:1px solid #e5e7eb;font-size:.92em;white-space:nowrap}
+th{font-weight:600;color:#667eea}
+th:first-child,td:first-child{text-align:left}
+tbody tr:hover{background:#f9fafb}
+td.neg{color:#ef4444}
+.note{color:#8a8a8a;font-size:.9em;margin-top:12px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📊 경영협의회 분석 대시보드</h1>
+    <p>2025년 vs 2026년 월별 재무 성과 분석 (1월~7월) · 단위: 백만원</p>
+  </div>
+
+  <div class="tab-container">
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="tab1">1️⃣ 25vs26 월별 손익</button>
+      <button class="tab-btn" data-tab="tab2">2️⃣ 월별 매출 vs 원가</button>
+      <button class="tab-btn" data-tab="tab3">3️⃣ 월별 당기순이익</button>
+      <button class="tab-btn" data-tab="tab4">4️⃣ 월별 판관비 추세</button>
+    </div>
+  </div>
+
+  <!-- TAB 1 -->
+  <div id="tab1" class="tab-content active">
+    <div class="chart-section">
+      <h3>📈 2025년 vs 2026년 월별 손익 비교</h3>
+      <div class="chart-grid">
+        <div style="position:relative;height:400px"><canvas id="c_rev"></canvas></div>
+        <div style="position:relative;height:400px"><canvas id="c_op"></canvas></div>
+      </div>
+    </div>
+    <div class="table-section">
+      <table>
+        <thead><tr><th>월별</th><th>2025 매출</th><th>2026 매출</th><th>2025 영업이익</th><th>2026 영업이익</th></tr></thead>
+        <tbody id="t1"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="tab2" class="tab-content">
+    <div class="chart-section">
+      <h3>💰 월별 매출 vs 원가 분석</h3>
+      <div style="position:relative;height:460px"><canvas id="c_cogs"></canvas></div>
+      <div class="note">※ 원가 = 매출원가 + 광고선전비 + 외주위탁비 &nbsp;|&nbsp; 실선 = 2026년, 점선 = 2025년 &nbsp;|&nbsp; 파랑 = 매출, 빨강 = 원가</div>
+    </div>
+    <div class="table-section">
+      <table>
+        <thead><tr><th>월별</th><th>2025 매출</th><th>2025 원가</th><th>2025 마진율</th><th>2026 매출</th><th>2026 원가</th><th>2026 마진율</th></tr></thead>
+        <tbody id="t2"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3 -->
+  <div id="tab3" class="tab-content">
+    <div class="month-selector">
+      <label for="ms" style="font-weight:600;color:#667eea">📅 월별 선택:</label>
+      <select id="ms"><option value="">-- 월을 선택하세요 --</option></select>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-label">선택 월 · 2025 당기순이익</div><div class="kpi-value" id="k_sel25">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">선택 월 · 2026 당기순이익</div><div class="kpi-value" id="k_sel26">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">2025 누적 당기순이익 (1~7월)</div><div class="kpi-value" id="k_cum25">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">2026 누적 당기순이익 (1~7월)</div><div class="kpi-value" id="k_cum26">-</div><div class="kpi-unit">백만원</div></div>
+    </div>
+    <div class="chart-section">
+      <h3>📉 월별 당기순이익 추이</h3>
+      <div style="position:relative;height:400px"><canvas id="c_net"></canvas></div>
+    </div>
+    <div class="table-section">
+      <table>
+        <thead><tr><th>월별</th><th>2025 당기순이익</th><th>2025 누적</th><th>2026 당기순이익</th><th>2026 누적</th></tr></thead>
+        <tbody id="t3"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4 -->
+  <div id="tab4" class="tab-content">
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-label">2025 총 판관비 (1~7월)</div><div class="kpi-value" id="k_s25">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">2026 총 판관비 (1~7월)</div><div class="kpi-value" id="k_s26">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">2025 월평균 판관비</div><div class="kpi-value" id="k_a25">-</div><div class="kpi-unit">백만원</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">2026 월평균 판관비</div><div class="kpi-value" id="k_a26">-</div><div class="kpi-unit">백만원</div></div>
+    </div>
+    <div class="chart-section">
+      <h3>💸 월별 판관비 사용 추세 (광고선전비 · 외주위탁비 제외)</h3>
+      <div class="chart-grid">
+        <div style="position:relative;height:400px"><canvas id="c_sga1"></canvas></div>
+        <div style="position:relative;height:400px"><canvas id="c_sga2"></canvas></div>
+      </div>
+    </div>
+    <div class="table-section">
+      <table>
+        <thead><tr><th>월별</th><th>2025 판관비</th><th>2026 판관비</th><th>변화</th><th>변화율</th></tr></thead>
+        <tbody id="t4"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const D = {"months": ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"], "2025": {"revenue": [271823173.0, 176676557.0, 369607483.0, 765435436.0, 580761228.0, 249553187.0, 373480806.0, 368549721.0, 240975865.0, 1000747691.0, 1006991302.0, 199566031.0], "cogs": [269386704.0, 186746307.0, 369164918.0, 750603632.0, 594173754.0, 207692865.0, 360694320.0, 358830655.0, 253901110.0, 974672462.0, 955487717.0, 867905800.0], "sga": [33186776.0, 31541559.0, 35966823.0, 51087696.0, 62812321.0, 41340602.0, 33340590.0, 30741359.0, 34008792.0, 61965060.0, 79578270.0, 37746267.0], "op": [-30750307.0, -41611309.0, -35524258.0, -36255892.0, -76224847.0, 519720.0, -20554104.0, -21022293.0, -46934037.0, -35889831.0, -28074685.0, -706086036.0], "net": [-200348882.0, -180055952.0, -271005147.0, -201974635.0, -223523524.0, -122655531.0, -203151284.0, -196375927.0, -271677064.0, -220835570.0, -141930698.0, -2401312139.0]}, "2026": {"revenue": [284712111.0, 507895922.0, 64127445.0, 455027491.0, 383427327.0, 380380144.0, 133699163.0, 0.0, 0.0, 0.0, 0.0, 0.0], "cogs": [248455401.0, 473868830.0, 14847458.0, 414275495.0, 340539183.0, 335439824.0, 100069533.0, 0.0, 0.0, 0.0, 0.0, 0.0], "sga": [31607295.0, 31078298.0, 33989692.0, 23587677.0, 23854632.0, 38135187.0, 28893962.0, 0.0, 0.0, 0.0, 0.0, 0.0], "op": [4649415.0, 2948794.0, 15290295.0, 17164319.0, 19033512.0, 6805133.0, 4735668.0, 0.0, 0.0, 0.0, 0.0, 0.0], "net": [-83733715.0, -73262691.0, -64024012.0, -60956147.0, -71421631.0, -124139307.0, -81811381.0, 0.0, 0.0, 0.0, 0.0, 0.0]}};
+const N = 7;
+const M = D.months.slice(0,N);
+const C25 = '#667eea', C26 = '#f59e0b', CREV = '#2563eb', CCOG = '#dc2626';
+const charts = {};
+
+// 백만원 표기 (음수는 △)
+function fm(v){
+  const m = v/1e6;
+  const s = Math.abs(m).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  return (m<0?'△':'') + s;
+}
+function fmAxis(v){
+  const m = Math.round(v/1e6);
+  return (m<0?'△':'') + Math.abs(m).toLocaleString('ko-KR');
+}
+function cls(v){ return v<0 ? ' class="neg"' : ''; }
+const opts = (fmt)=>({
+  responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+  plugins:{
+    legend:{position:'top',labels:{usePointStyle:true,boxWidth:8}},
+    tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fm(c.parsed.y)+' 백만원'}}
+  },
+  scales:{ y:{ ticks:{callback:fmAxis} }, x:{grid:{display:false}} }
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+    document.getElementById(b.dataset.tab).classList.add('active');
+    b.classList.add('active');
+    setTimeout(()=>Object.values(charts).forEach(c=>c&&c.resize()),80);
+  });
+});
+
+// Tab1 charts
+charts.rev = new Chart(document.getElementById('c_rev'),{type:'bar',data:{labels:M,datasets:[
+  {label:'2025년 매출',data:D['2025'].revenue.slice(0,N),backgroundColor:C25,borderRadius:4},
+  {label:'2026년 매출',data:D['2026'].revenue.slice(0,N),backgroundColor:C26,borderRadius:4}
+]},options:opts()});
+
+charts.op = new Chart(document.getElementById('c_op'),{type:'bar',data:{labels:M,datasets:[
+  {label:'2025년 영업이익',data:D['2025'].op.slice(0,N),backgroundColor:C25,borderRadius:4},
+  {label:'2026년 영업이익',data:D['2026'].op.slice(0,N),backgroundColor:C26,borderRadius:4}
+]},options:opts()});
+
+// Tab2 chart: 실선=2026, 점선=2025 / 파랑=매출, 빨강=원가
+charts.cogs = new Chart(document.getElementById('c_cogs'),{type:'line',data:{labels:M,datasets:[
+  {label:'2025 매출',data:D['2025'].revenue.slice(0,N),borderColor:CREV,backgroundColor:CREV,borderDash:[6,4],borderWidth:2,fill:false,tension:.3,pointRadius:5,pointStyle:'circle'},
+  {label:'2025 원가',data:D['2025'].cogs.slice(0,N),borderColor:CCOG,backgroundColor:CCOG,borderDash:[6,4],borderWidth:2,fill:false,tension:.3,pointRadius:5,pointStyle:'circle'},
+  {label:'2026 매출',data:D['2026'].revenue.slice(0,N),borderColor:CREV,backgroundColor:CREV,borderWidth:3,fill:false,tension:.3,pointRadius:5},
+  {label:'2026 원가',data:D['2026'].cogs.slice(0,N),borderColor:CCOG,backgroundColor:CCOG,borderWidth:3,fill:false,tension:.3,pointRadius:5}
+]},options:opts()});
+
+// Tab3 chart
+charts.net = new Chart(document.getElementById('c_net'),{type:'line',data:{labels:M,datasets:[
+  {label:'2025년 당기순이익',data:D['2025'].net.slice(0,N),borderColor:C25,backgroundColor:'rgba(102,126,234,.12)',borderWidth:3,fill:true,tension:.3,pointRadius:5},
+  {label:'2026년 당기순이익',data:D['2026'].net.slice(0,N),borderColor:C26,backgroundColor:'rgba(245,158,11,.12)',borderWidth:3,fill:true,tension:.3,pointRadius:5}
+]},options:opts()});
+
+// Tab4 charts
+charts.sga1 = new Chart(document.getElementById('c_sga1'),{type:'line',data:{labels:M,datasets:[
+  {label:'2025년 판관비',data:D['2025'].sga.slice(0,N),borderColor:C25,backgroundColor:'rgba(102,126,234,.12)',borderWidth:3,fill:true,tension:.3,pointRadius:5},
+  {label:'2026년 판관비',data:D['2026'].sga.slice(0,N),borderColor:C26,backgroundColor:'rgba(245,158,11,.12)',borderWidth:3,fill:true,tension:.3,pointRadius:5}
+]},options:opts()});
+
+charts.sga2 = new Chart(document.getElementById('c_sga2'),{type:'bar',data:{labels:M,datasets:[
+  {label:'2025년 판관비',data:D['2025'].sga.slice(0,N),backgroundColor:C25,borderRadius:4},
+  {label:'2026년 판관비',data:D['2026'].sga.slice(0,N),backgroundColor:C26,borderRadius:4}
+]},options:opts()});
+
+// Tables
+let h='';
+for(let i=0;i<N;i++){
+  const a=D['2025'].revenue[i],b=D['2026'].revenue[i],c=D['2025'].op[i],d=D['2026'].op[i];
+  h+=`<tr><td>${M[i]}</td><td>${fm(a)}</td><td>${fm(b)}</td><td${cls(c)}>${fm(c)}</td><td${cls(d)}>${fm(d)}</td></tr>`;
+}
+document.getElementById('t1').innerHTML=h;
+
+h='';
+for(let i=0;i<N;i++){
+  const r5=D['2025'].revenue[i],g5=D['2025'].cogs[i],r6=D['2026'].revenue[i],g6=D['2026'].cogs[i];
+  const m5=r5?((r5-g5)/r5*100):0, m6=r6?((r6-g6)/r6*100):0;
+  h+=`<tr><td>${M[i]}</td><td>${fm(r5)}</td><td>${fm(g5)}</td><td${cls(m5)}>${m5.toFixed(1)}%</td><td>${fm(r6)}</td><td>${fm(g6)}</td><td${cls(m6)}>${m6.toFixed(1)}%</td></tr>`;
+}
+document.getElementById('t2').innerHTML=h;
+
+let cum25=0,cum26=0; h='';
+for(let i=0;i<N;i++){
+  const n5=D['2025'].net[i],n6=D['2026'].net[i];
+  cum25+=n5; cum26+=n6;
+  h+=`<tr><td>${M[i]}</td><td${cls(n5)}>${fm(n5)}</td><td${cls(cum25)}>${fm(cum25)}</td><td${cls(n6)}>${fm(n6)}</td><td${cls(cum26)}>${fm(cum26)}</td></tr>`;
+}
+document.getElementById('t3').innerHTML=h;
+
+h='';
+for(let i=0;i<N;i++){
+  const s5=D['2025'].sga[i],s6=D['2026'].sga[i],ch=s6-s5,rt=s5?(ch/s5*100):0;
+  h+=`<tr><td>${M[i]}</td><td>${fm(s5)}</td><td>${fm(s6)}</td><td${cls(ch)}>${fm(ch)}</td><td${cls(rt)}>${rt.toFixed(1)}%</td></tr>`;
+}
+document.getElementById('t4').innerHTML=h;
+
+// KPIs
+const sum=(a)=>a.slice(0,N).reduce((x,y)=>x+y,0);
+function setK(id,v){const e=document.getElementById(id);e.textContent=fm(v);if(v<0)e.classList.add('neg');else e.classList.remove('neg');}
+setK('k_cum25', sum(D['2025'].net));
+setK('k_cum26', sum(D['2026'].net));
+setK('k_s25', sum(D['2025'].sga));
+setK('k_s26', sum(D['2026'].sga));
+setK('k_a25', sum(D['2025'].sga)/N);
+setK('k_a26', sum(D['2026'].sga)/N);
+
+// Month selector
+const ms=document.getElementById('ms');
+for(let i=0;i<N;i++){const o=document.createElement('option');o.value=i;o.text=M[i];ms.appendChild(o);}
+ms.addEventListener('change',()=>{
+  const i=parseInt(ms.value);
+  if(isNaN(i)){document.getElementById('k_sel25').textContent='-';document.getElementById('k_sel26').textContent='-';return;}
+  setK('k_sel25',D['2025'].net[i]);
+  setK('k_sel26',D['2026'].net[i]);
+});
+</script>
+</body>
+</html>

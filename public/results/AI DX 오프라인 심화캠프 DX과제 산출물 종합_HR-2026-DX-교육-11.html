@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DX과제 산출물 종합 — AI DX 오프라인 심화캠프</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --seco-pink:#E82076; --seco-gray:#918F8F; --seco-gray-light:#F2F2F2;
+  --ink:#1f2330; --sub:#55585f; --mute:#9ca0a8; --line:#e3e4e6;
+  --ok:#1A9650; --wait:#C8880A; --bg:#F7F8FA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  word-break:keep-all; overflow-wrap:break-word; line-height:1.8;
+  color:var(--ink); background:var(--bg);
+}
+p,li,td,th,div,span,a,h1,h2,h3,h4,h5,h6{word-break:keep-all;overflow-wrap:break-word}
+.page{max-width:1080px;margin:0 auto;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.conf{background:var(--seco-gray-light);color:#6b6e74;font-size:11px;font-weight:600;
+  text-align:center;letter-spacing:.3px;padding:5px 0}
+.head{display:flex;justify-content:space-between;align-items:center;
+  padding:12px 32px;border-bottom:1px solid var(--line)}
+.brand-line{display:flex;align-items:center;gap:11px}
+.accent-bar{width:5px;height:22px;background:var(--seco-pink);border-radius:2px}
+.affiliate{font-size:19px;font-weight:700;color:var(--ink);letter-spacing:-.3px;white-space:nowrap}
+.title-line{display:flex;align-items:baseline;gap:12px;margin-top:7px}
+.doc-category{font-size:12px;font-weight:700;color:var(--seco-pink);white-space:nowrap}
+.doc-title{font-family:'Noto Serif KR',serif;font-size:17px;font-weight:700;color:var(--ink)}
+.head-meta{text-align:right;flex-shrink:0}
+.docno{font-size:14px;font-weight:700;color:var(--seco-pink);letter-spacing:.3px}
+.meta-sub{font-size:11px;color:var(--mute);margin-top:3px}
+.body-wrap{padding:24px 32px 8px}
+.section-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;
+  margin:26px 0 12px;padding-left:10px;border-left:4px solid var(--seco-pink)}
+.section-title:first-child{margin-top:4px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fff}
+.kpi .lb{font-size:11px;color:var(--sub);font-weight:600}
+.kpi .vl{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.kpi .sb{font-size:10.5px;color:var(--mute);margin-top:2px}
+.card{border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px;background:#fff}
+.card-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.nm{font-size:15px;font-weight:700}
+.co{font-size:11px;font-weight:700;color:var(--seco-pink);background:#FDF0F5;
+  padding:2px 8px;border-radius:20px}
+.dt{font-size:11px;color:var(--mute);margin-left:auto}
+.src{font-size:11px;color:var(--sub);margin-bottom:10px}
+.files{display:flex;flex-wrap:wrap;gap:6px}
+.f{font-size:11.5px;background:var(--seco-gray-light);border-radius:6px;padding:5px 10px;
+  display:inline-flex;align-items:center;gap:6px}
+.f .k{font-weight:700;color:var(--seco-pink);font-size:10px}
+.f .z{color:var(--mute);font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+th{background:var(--seco-gray-light);font-weight:700;text-align:left;
+  padding:9px 10px;border-bottom:2px solid var(--line);font-size:11.5px}
+td{padding:8px 10px;border-bottom:1px solid var(--line)}
+.st-ok{color:var(--ok);font-weight:700}
+.st-wait{color:var(--wait);font-weight:700}
+.note{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;
+  padding:12px 14px;font-size:12px;margin-top:12px}
+.foot{border-top:1px solid var(--line);padding:13px 32px;display:flex;
+  justify-content:space-between;font-size:11px;color:var(--sub);margin-top:20px}
+@page{size:A4;margin:12mm 14mm}
+@media print{
+  html,body{background:#fff}
+  .page{box-shadow:none;margin:0;max-width:none;width:100%}
+  .conf{page-break-inside:avoid;break-inside:avoid}
+  .head{page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid}
+  .section-title,h1,h2,h3{page-break-after:avoid;break-after:avoid}
+  .card,.kpi,.note{page-break-inside:avoid;break-inside:avoid}
+  table{page-break-inside:auto}
+  thead{display:table-header-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+}
+@media(max-width:720px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="conf">내부 한정 · 개인정보(성명) 포함 · 열람·배포 제한</div>
+  <div class="head">
+    <div class="brand-block">
+      <div class="brand-line">
+        <span class="accent-bar"></span>
+        <span class="affiliate">좋은사람들</span>
+      </div>
+      <div class="title-line">
+        <span class="doc-category">교육 산출물</span>
+        <span class="doc-title">AI DX 오프라인 심화캠프 DX과제 산출물 종합</span>
+      </div>
+    </div>
+    <div class="head-meta">
+      <div class="docno">HR-2026-DX-교육-11</div>
+      <div class="meta-sub">비제조부문 인사팀 · 2026-08-18</div>
+    </div>
+  </div>
+
+  <div class="body-wrap">
+    <div class="section-title">제출 현황 요약</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lb">캠프 대상</div><div class="vl">23<span style="font-size:14px">명</span></div><div class="sb">8/13 심화캠프 확정 인원</div></div>
+      <div class="kpi"><div class="lb">산출물 제출</div><div class="vl" style="color:var(--ok)">5<span style="font-size:14px">명</span></div><div class="sb">제출률 22%</div></div>
+      <div class="kpi"><div class="lb">총 파일</div><div class="vl">9<span style="font-size:14px">건</span></div><div class="sb">합계 4.8MB</div></div>
+      <div class="kpi"><div class="lb">미제출</div><div class="vl" style="color:var(--wait)">18<span style="font-size:14px">명</span></div><div class="sb">독려 필요 인원</div></div>
+    </div>
+
+    <div class="section-title">제출자별 산출물</div>
+    
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">김현우</span>
+        <span class="co">상일식품</span>
+        <span class="dt">2026-08-14 · 파일 1건 · 178KB</span>
+      </div>
+      <div class="src">원본 · 김현우_상일식품_Smart_수불분석기_V10_예시_스냅샷.html</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EA%B9%80%ED%98%84%EC%9A%B0_%EC%83%81%EC%9D%BC%EC%8B%9D%ED%92%88/Smart_%EC%88%98%EB%B6%88%EB%B6%84%EC%84%9D%EA%B8%B0_V10_%EC%98%88%EC%8B%9C_%EC%8A%A4%EB%83%85%EC%83%B7.html" target="_blank" rel="noopener"><span class="k">웹서비스·대시보드</span>김현우_상일식품_Smart_수불분석기_V10_예시_스냅샷.html<span class="z">178KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">김현우</span>
+        <span class="co">상일식품</span>
+        <span class="dt">2026-08-14 · 파일 1건 · 38KB</span>
+      </div>
+      <div class="src">원본 · 김현우_상일식품_상일식품_분석관리시스템_구축성과_및_발전계획_보고서.docx</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EA%B9%80%ED%98%84%EC%9A%B0_%EC%83%81%EC%9D%BC%EC%8B%9D%ED%92%88/%EC%83%81%EC%9D%BC%EC%8B%9D%ED%92%88_%EB%B6%84%EC%84%9D%EA%B4%80%EB%A6%AC%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B5%AC%EC%B6%95%EC%84%B1%EA%B3%BC_%EB%B0%8F_%EB%B0%9C%EC%A0%84%EA%B3%84%ED%9A%8D_%EB%B3%B4%EA%B3%A0%EC%84%9C.docx" download="상일식품_분석관리시스템_구축성과_및_발전계획_보고서.docx"><span class="k">문서</span>김현우_상일식품_상일식품_분석관리시스템_구축성과_및_발전계획_보고서.docx<span class="z">38KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">김민지</span>
+        <span class="co">우리인터텍스</span>
+        <span class="dt">2026-08-18 · 파일 2건 · 204KB</span>
+      </div>
+      <div class="src">원본 · 김민지_우리인터텍스_7월 경영협의회_ai연습용.zip</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EA%B9%80%EB%AF%BC%EC%A7%80_%EC%9A%B0%EB%A6%AC%EC%9D%B8%ED%84%B0%ED%85%8D%EC%8A%A4/7%EC%9B%94%20%EA%B2%BD%EC%98%81%ED%98%91%EC%9D%98%ED%9A%8C_ai%EC%97%B0%EC%8A%B5%EC%9A%A9.xlsx" download="7월 경영협의회_ai연습용.xlsx"><span class="k">스프레드시트</span>7월 경영협의회_ai연습용.xlsx<span class="z">189KB</span></a><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EA%B9%80%EB%AF%BC%EC%A7%80_%EC%9A%B0%EB%A6%AC%EC%9D%B8%ED%84%B0%ED%85%8D%EC%8A%A4/%EA%B2%BD%EC%98%81%ED%98%91%EC%9D%98%ED%9A%8C_%EB%8C%80%EC%8B%9C%EB%B3%B4%EB%93%9C.html" target="_blank" rel="noopener"><span class="k">웹서비스·대시보드</span>경영협의회_대시보드.html<span class="z">16KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">신수용</span>
+        <span class="co">인베스터유나이티드</span>
+        <span class="dt">2026-08-18 · 파일 1건 · 883KB</span>
+      </div>
+      <div class="src">원본 · 신수용_인베스터유나이티드_채권점검_보고서_v7.1_202606.pdf</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EC%8B%A0%EC%88%98%EC%9A%A9_%EC%9D%B8%EB%B2%A0%EC%8A%A4%ED%84%B0%EC%9C%A0%EB%82%98%EC%9D%B4%ED%8B%B0%EB%93%9C/%EC%B1%84%EA%B6%8C%EC%A0%90%EA%B2%80_%EB%B3%B4%EA%B3%A0%EC%84%9C_v7.1_202606.pdf" download="채권점검_보고서_v7.1_202606.pdf"><span class="k">문서</span>신수용_인베스터유나이티드_채권점검_보고서_v7.1_202606.pdf<span class="z">883KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">신수용</span>
+        <span class="co">인베스터유나이티드</span>
+        <span class="dt">2026-08-18 · 파일 1건 · 2.0MB</span>
+      </div>
+      <div class="src">원본 · 신수용_인베스터유나이티드_채권점검_상세_v7.1_202606.xlsx</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EC%8B%A0%EC%88%98%EC%9A%A9_%EC%9D%B8%EB%B2%A0%EC%8A%A4%ED%84%B0%EC%9C%A0%EB%82%98%EC%9D%B4%ED%8B%B0%EB%93%9C/%EC%B1%84%EA%B6%8C%EC%A0%90%EA%B2%80_%EC%83%81%EC%84%B8_v7.1_202606.xlsx" download="채권점검_상세_v7.1_202606.xlsx"><span class="k">스프레드시트</span>신수용_인베스터유나이티드_채권점검_상세_v7.1_202606.xlsx<span class="z">2.0MB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">황정원</span>
+        <span class="co">좋은사람들</span>
+        <span class="dt">2026-08-18 · 파일 1건 · 175KB</span>
+      </div>
+      <div class="src">원본 · 황정원_좋은사람들_LEE_카테고리코드_자동채움.html</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%ED%99%A9%EC%A0%95%EC%9B%90_%EC%A2%8B%EC%9D%80%EC%82%AC%EB%9E%8C%EB%93%A4/LEE_%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC%EC%BD%94%EB%93%9C_%EC%9E%90%EB%8F%99%EC%B1%84%EC%9B%80.html" target="_blank" rel="noopener"><span class="k">웹서비스·대시보드</span>황정원_좋은사람들_LEE_카테고리코드_자동채움.html<span class="z">175KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">황정원</span>
+        <span class="co">좋은사람들</span>
+        <span class="dt">2026-08-18 · 파일 1건 · 969KB</span>
+      </div>
+      <div class="src">원본 · 황정원_좋은사람들_고도몰_카테고리_자동채움_업무개선.pptx</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%ED%99%A9%EC%A0%95%EC%9B%90_%EC%A2%8B%EC%9D%80%EC%82%AC%EB%9E%8C%EB%93%A4/%EA%B3%A0%EB%8F%84%EB%AA%B0_%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC_%EC%9E%90%EB%8F%99%EC%B1%84%EC%9B%80_%EC%97%85%EB%AC%B4%EA%B0%9C%EC%84%A0.pptx" download="고도몰_카테고리_자동채움_업무개선.pptx"><span class="k">발표자료</span>황정원_좋은사람들_고도몰_카테고리_자동채움_업무개선.pptx<span class="z">969KB</span></a></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="nm">유정우</span>
+        <span class="co">휴맥스해운항공</span>
+        <span class="dt">2026-08-18 · 파일 1건 · 341KB</span>
+      </div>
+      <div class="src">원본 · 유정우_휴맥스해운항공_(휴맥스) 운임 리스트업.html</div>
+      <div class="files"><a class="f" href="%EC%82%B0%EC%B6%9C%EB%AC%BC/%EC%9C%A0%EC%A0%95%EC%9A%B0_%ED%9C%B4%EB%A7%A5%EC%8A%A4%ED%95%B4%EC%9A%B4%ED%95%AD%EA%B3%B5/%28%ED%9C%B4%EB%A7%A5%EC%8A%A4%29%20%EC%9A%B4%EC%9E%84%20%EB%A6%AC%EC%8A%A4%ED%8A%B8%EC%97%85.html" target="_blank" rel="noopener"><span class="k">웹서비스·대시보드</span>유정우_휴맥스해운항공_(휴맥스) 운임 리스트업.html<span class="z">341KB</span></a></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>비제조부문 인사팀</div>
+    <div>HR-2026-DX-교육-11 · 2026-08-18</div>
+  </div>
+</div>
+</body>
+</html>

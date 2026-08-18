@@ -635,16 +635,15 @@ tr:hover td{background:var(--bg);}
         <option value="req">필수 완료(4개)</option>
         <option value="progress">진행 중</option>
         <option value="not">미시작</option>
-      </select>
-      <input class="table-search" id="compSearch" type="text" placeholder="이름·이메일 검색..." oninput="renderCompletionTable()">
+  <div class="mon-alerts" id="monAlerts"></div>
+      <label style="font-size:12px;font-weight:700;color:var(--text2)">관계사</label>
+      <select id="rptCompany" onchange="renderReportTab()"></select>
+      <button class="rr-print" onclick="printReport()">🖨 인쇄 / PDF 저장</button>
     </div>
-    <div id="completionTableWrap"><div class="loading"><div class="spinner"></div>데이터 로딩 중...</div></div>
+    <div id="rptBody"><div class="rr-empty"><div class="i">📑</div><div>관계사를 선택하세요</div></div></div>
   </div>
 </div>
 </div>
-
-<!-- 이 임원용 페이지는 탭 5개(통합현황·오프라인교육·AI챔피언·수료관리·온보딩)만 쓴다.
-     관리자 대시보드에 있는 모니터링·온라인교육·리포트 탭은 여기 두지 않는다. -->
 
 </div><!-- /mainPage -->
 
@@ -746,22 +745,7 @@ async function checkAuth() {
     }
     enterDashboard();
   } catch(e) {
-    // 원인별로 다른 안내를 준다. 전부 '비밀번호를 확인하세요'로 뭉뚱그리면
-    // 계정이 아예 없는 경우에도 비밀번호만 계속 바꿔 넣게 된다(실제로 겪은 문제).
-    const code = (e && e.code) || '';
-    if (code === 'auth/user-not-found') {
-      errEl.textContent = '이 이메일로 만들어진 계정이 없습니다. 인사팀에 계정 생성을 요청하세요.';
-    } else if (code === 'auth/wrong-password') {
-      errEl.textContent = '비밀번호가 맞지 않습니다. (회사 메일 비밀번호가 아니라 대시보드 전용 비밀번호입니다)';
-    } else if (code === 'auth/invalid-credential') {
-      errEl.textContent = '계정이 없거나 비밀번호가 다릅니다. 계정 발급 여부부터 인사팀에 확인하세요.';
-    } else if (code === 'auth/invalid-email') {
-      errEl.textContent = '이메일 형식이 올바르지 않습니다.';
-    } else if (code === 'auth/too-many-requests') {
-      errEl.textContent = '시도가 많아 잠시 차단되었습니다. 몇 분 뒤 다시 시도하세요.';
-    } else {
-      errEl.textContent = '로그인 실패 · ' + (code || '알 수 없는 오류');
-    }
+    errEl.textContent='로그인 실패 · 이메일/비밀번호를 확인하세요.';
     document.getElementById('authPw').value='';
   }
 }
@@ -787,6 +771,14 @@ function monSeconds(l){
   if(t._seconds != null) return t._seconds;
   const d = Date.parse(t); return isNaN(d) ? null : d/1000;
 }
+// 필수과정(M01~M04) 4개 모듈을 모두 이수한 '수료자' 여부.
+// 수료자는 자연히 접속이 뜸해지므로 '7일 미접속'·'독려 대상'에서 제외한다.
+// (2026-06-16 패치를 자동로그인 배포본에 재적용 — 라이브 데이터 검증 결과 234명 중 182명이
+//  이미 필수과정을 마쳤음에도 '7일 미접속'으로 잘못 집계되고 있었음)
+function reqCourseDone(l){
+  return Array.isArray(REQUIRED_MODS) && REQUIRED_MODS.length>0 &&
+    REQUIRED_MODS.every(function(m){ return l && l.modules && l.modules[m.id] && l.modules[m.id].completed; });
+}
 function monTime(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 function renderMonitor(){ if(!document.getElementById('monKpi')) return;
   if(!document.getElementById('monKpi')) return;
@@ -807,7 +799,7 @@ function renderMonitor(){ if(!document.getElementById('monKpi')) return;
   rows.push(['오프라인 출석 오류', offErr===0?'이상 없음':('⚠ '+offErr+'건 오류'), offErr===0?'mon-ok':'mon-bad']); if(offErr>0) issues++;
   const intScore = Math.round((1-issues/6)*100);
   const weekAgo = Date.now()/1000 - 604800;
-  const inactive = L.filter(l=>{const sx=monSeconds(l); return sx!=null && sx<weekAgo;});
+  const inactive = L.filter(l=>{const sx=monSeconds(l); return sx!=null && sx<weekAgo && !reqCourseDone(l);});
   const notStarted = L.filter(l=>!(l.completionRate>0));
   const lowScore = L.filter(l=>{const ms=Object.values(l.modules||{}).filter(m=>m&&m.completed&&m.score); if(!ms.length) return false; const avg=ms.reduce((a,m)=>a+m.score,0)/ms.length; return avg>0&&avg<50;});
   let anomalies = 0; if(inactive.length>0) anomalies++; if(notStarted.length>total*0.3) anomalies++; if(lowScore.length>0) anomalies++;
@@ -827,7 +819,7 @@ function renderMonitor(){ if(!document.getElementById('monKpi')) return;
   if(C.length>0){ alerts.push(['info','🏆 AI챔피언 후보 '+C.length+'명 접수','HR팀 검토가 필요합니다.']); }
   if(issues===0 && anomalies===0){ alerts.push(['ok','✅ 모든 점검 정상','정합성·이상감지 전 항목 이상 없음.']); }
   document.getElementById('monAlerts').innerHTML = alerts.map(a=>'<div class="mon-alert '+a[0]+'"><div class="t">'+a[1]+'</div><div class="d">'+a[2]+'</div></div>').join('');
-  const nudgeTargets=L.filter(l=>{ if(!l.email) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
+  const nudgeTargets=L.filter(l=>{ if(!l.email) return false; if(reqCourseDone(l)) return false; const sx=monSeconds(l); return (sx!=null&&sx<weekAgo) || !(l.completionRate>0); });
   const ma=document.getElementById('monActions');
   if(ma){ ma.innerHTML = nudgeTargets.length>0
     ? '<button class="mon-refresh" style="background:var(--gold);" onclick="sendNudgeEmails()">✉️ 독려 대상 '+nudgeTargets.length+'명에게 메일 보내기</button> <span style="font-size:11.5px;color:var(--gray);margin-left:8px;">7일 미접속·미시작자 · 개별 또는 전체(BCC) 발송 선택</span>'
@@ -878,7 +870,7 @@ function computeOpsSnapshot(){
   var reqDone=L.filter(function(l){return REQUIRED_MODS.every(function(m){return l.modules&&l.modules[m.id]&&l.modules[m.id].completed;});}).length;
   var reqRate=total?Math.round(reqDone/total*100):0;
   var weekAgo=Date.now()/1000-604800;
-  var inactive=L.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx<weekAgo;}).length;
+  var inactive=L.filter(function(l){var sx=monSeconds(l);return sx!=null&&sx<weekAgo&&!reqCourseDone(l);}).length;
   var notStarted=L.filter(function(l){return !(l.completionRate>0);}).length;
   var lowScore=L.filter(function(l){var ms=Object.values(l.modules||{}).filter(function(m){return m&&m.completed&&m.score;});if(!ms.length)return false;var avg=ms.reduce(function(a,m){return a+m.score;},0)/ms.length;return avg>0&&avg<50;}).length;
   var issues=0;
@@ -1318,14 +1310,16 @@ function renderOverviewCharts() {
     const g=allLearners.filter(l=>l.company===c);
     return g.length?Math.round(g.reduce((s,l)=>s+(l.completionRate||0),0)/g.length):0;
   });
-  makeChart('chartCompany',{
+  destroyChart('chartCompany');
+  charts.chartCompany = new Chart(document.getElementById('chartCompany'),{
     type:'bar', data:{labels:companies,datasets:[{label:'이수율(%)',data:rates,backgroundColor:colors.slice(0,companies.length),borderRadius:6,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%'},grid:{color:'#E8EAF0'}},x:{grid:{display:false}}}}
   });
   // Distribution donut
   const buckets=[0,0,0,0,0];
   allLearners.forEach(l=>{const r=l.completionRate||0;buckets[Math.min(Math.floor(r/20),4)]++;});
-  makeChart('chartDist',{
+  destroyChart('chartDist');
+  charts.chartDist = new Chart(document.getElementById('chartDist'),{
     type:'doughnut',
     data:{labels:['0-20%','21-40%','41-60%','61-80%','81-100%'],datasets:[{data:buckets,backgroundColor:['#FFCDD2','#FFE0B2','#FFF9C4','#C8E6C9','#1A9650'],borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}
@@ -1334,13 +1328,15 @@ function renderOverviewCharts() {
   const tracks=['필수 기초','실무 활용 심화','AI챔피언 심화','보너스 심화'];
   const trackMods=tracks.map(t=>MODULES.filter(m=>m.track===t).map(m=>m.id));
   const counts=trackMods.map(mids=>allLearners.filter(l=>mids.every(id=>l.modules&&l.modules[id]&&l.modules[id].completed)).length);
-  makeChart('chartTrack',{
+  destroyChart('chartTrack');
+  charts.chartTrack = new Chart(document.getElementById('chartTrack'),{
     type:'bar',data:{labels:['필수기초','실무심화','챔피언심화','보너스심화'],datasets:[{label:'완료 인원',data:counts,backgroundColor:['#1660C8','#1A9650','#6432B8','#C8880A'],borderRadius:6}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#E8EAF0'}},y:{grid:{display:false}}}}
   });
   // Score line
   const scores=MODULES.map(m=>{let sum=0,cnt=0;allLearners.forEach(l=>{const mod=l.modules&&l.modules[m.id];if(mod&&mod.completed&&mod.score){sum+=mod.score;cnt++;}});return cnt?Math.round(sum/cnt):0;});
-  makeChart('chartScore',{
+  destroyChart('chartScore');
+  charts.chartScore = new Chart(document.getElementById('chartScore'),{
     type:'line',data:{labels:MODULES.map(m=>m.id),datasets:[{label:'평균 점수',data:scores,borderColor:'#1660C8',backgroundColor:'rgba(22,96,200,0.08)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#1660C8'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'점'},grid:{color:'#E8EAF0'}},x:{grid:{display:false}}}}
   });
@@ -1354,7 +1350,8 @@ function renderOverviewCharts() {
   const highR=Math.round(allLearners.filter(l=>(l.completionRate||0)>=80).length/total*100);
   const weekAgo=Date.now()/1000-604800;
   const actR=Math.round(allLearners.filter(l=>l.lastActiveAt&&(l.lastActiveAt.seconds||0)>weekAgo).length/total*100);
-  makeChart('chartKpi',{
+  destroyChart('chartKpi');
+  charts.chartKpi = new Chart(document.getElementById('chartKpi'),{
     type:'radar',
     data:{labels:['전체 이수율','필수 이수율','퀴즈 점수','80%↑ 달성','주간 활성'],datasets:[
       {label:'현재',data:[avgR,passR,avgS,highR,actR],borderColor:'#1660C8',backgroundColor:'rgba(22,96,200,0.12)',pointBackgroundColor:'#1660C8'},
@@ -1364,17 +1361,6 @@ function renderOverviewCharts() {
   });
 }
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
-// 이 임원용 페이지는 관리자 대시보드보다 탭·차트가 적어서 캔버스가 없는 차트가 있다.
-// new Chart(null,…) 은 예외를 던지고, 그러면 onLearnersUpdated 체인이 그 자리에서 끊겨
-// 뒤따르는 renderCompletionTable(수료관리)까지 통째로 실행되지 않는다(실제로 겪은 문제).
-// 캔버스가 없으면 그 차트만 건너뛴다.
-function makeChart(id, cfg){
-  const el = document.getElementById(id);
-  if (!el) return null;
-  destroyChart(id);
-  charts[id] = new Chart(el, cfg);
-  return charts[id];
-}
 
 // ══════════════════════════════════════════════════════════════
 // 8-B. ONBOARDING TAB (신규입사자 온보딩 OB01~OB06)
@@ -1799,15 +1785,11 @@ function populateFilter() { if(!document.getElementById('filterCompany')) return
   sel.innerHTML='<option value="">전체 회사</option>'+companies.map(c=>`<option ${c===cur?'selected':''} >${c}</option>`).join('');
 }
 
-// 이 임원용 페이지에는 온라인교육 탭의 필터(filterCompany/Status/Track)가 없다.
-// 없는 필터를 그대로 .value 로 읽으면 여기서 예외가 나고, onLearnersUpdated 체인이
-// 끊겨 뒤따르는 수료관리 렌더까지 실행되지 않는다. 없으면 '전체'로 간주한다.
-const fval = id => { const e=document.getElementById(id); return e ? (e.value||'') : ''; };
 function renderTable() { if(!document.getElementById('tableWrap')) return;
-  const search=fval('tableSearch').toLowerCase();
-  const company=fval('filterCompany');
-  const status=fval('filterStatus');
-  const track=fval('filterTrack');
+  const search=(document.getElementById('tableSearch').value||'').toLowerCase();
+  const company=document.getElementById('filterCompany').value;
+  const status=document.getElementById('filterStatus').value;
+  const track=document.getElementById('filterTrack').value;
   let rows=allLearners.filter(l=>{
     if(company&&l.company!==company)return false;
     if(track&&l.eduTrack!==track)return false;
@@ -1903,12 +1885,23 @@ const DX_PLAN_HREF=DX_EDU_BASE+'AI DX 오프라인 심화캠프_HR-2026-DX-교�
 const DX_REPORT_HREF=DX_EDU_BASE+'AI DX 오프라인 심화캠프 결과보고서_HR-2026-DX-교육-10.html';
 const DX_OUTPUTS_HREF=DX_EDU_BASE+'AI DX 오프라인 심화캠프 DX과제 산출물 종합_HR-2026-DX-교육-11.html';
 const FILE_ICON={html:'🌐',docx:'📄',doc:'📄',pdf:'📕',xlsx:'📊',xls:'📊',pptx:'📽️',zip:'🗜️'};
-// 카드에 공개할 산출물 제출자 — 검토가 끝난 사람만 여기 추가한다. 비우면 전원 노출.
-const DX_OUTPUT_VISIBLE=['hyunwoo024@mizzifood.com'];
+// HTML은 새 탭에서 바로 보고, 그 외(문서·표·PPT 등)는 다운로드시킨다.
+// 브라우저가 docx/xlsx/pptx를 직접 못 열어서 새 탭으로 열면 깨진 화면만 뜬다.
+function fileLinkAttrs(f){
+  if((f.type||'').toLowerCase()==='html') return 'target="_blank" rel="noopener"';
+  return `download="${esc(f.name)}"`;
+}
+// 카드에 공개할 산출물 제출자를 이메일로 지정 — 검토가 끝난 사람만 여기 추가한다.
+// 비워두면 dxOutput이 있는 전원이 노출된다.
+const DX_OUTPUT_VISIBLE_EMAILS=[
+  'hyunwoo024@mizzifood.com',   // 김현우 · 상일식품
+  'jeongwon.hwang@gpin.co.kr',  // 황정원 · 좋은사람들
+  'harry@humexcargo.com',       // 유정우 · 휴맥스해운항공
+  'syshin@investorunited.co.kr',// 신수용 · 인베스터유나이티드
+  'minji@ooriintertex.co.kr',   // 김민지 · 우리인터텍스
+];
 function dxOutputVisible(a){
-  if(!a.dxOutput) return false;
-  if(!DX_OUTPUT_VISIBLE.length) return true;
-  return DX_OUTPUT_VISIBLE.indexOf((a.email||'').toLowerCase())>=0;
+  return !!a.dxOutput && (!DX_OUTPUT_VISIBLE_EMAILS.length || DX_OUTPUT_VISIBLE_EMAILS.includes((a.email||'').toLowerCase()));
 }
 function dxResultCard(sessions){
   const s=sessions.find(x=>x.id==='dx_20260813_offlinecamp');
@@ -1935,7 +1928,7 @@ function dxResultCard(sessions){
       <span class="rl-ico">🗂️</span>
       <span class="rl-tx">
         <b>DX과제 산출물 종합</b>
-        <small>HR-2026-DX-교육-11 · 제출자별 산출물 모음</small>
+        <small>HR-2026-DX-교육-11 · 제출자별 산출물 ${submitted}건 모음</small>
       </span>
       <span class="rl-go">열기 →</span>
     </a>`:''}
@@ -1951,19 +1944,20 @@ function dxResultCard(sessions){
 
 // 회신 현황 표 맨 우측 '산출물' 칸 — 제출자는 파일별 링크, 미제출자는 대기 표시.
 function dxOutputCell(a){
-  const o=dxOutputVisible(a)?a.dxOutput:null;
+  const o=a.dxOutput;
   if(!o) return a.dxStatus==='회신완료'
     ? '<span class="td-out-wait">제출 대기</span>'
     : '<span class="td-out-none">—</span>';
   return `<div class="td-out" title="${esc(o.title||'')}">`
     + (o.files||[]).map(f=>
-        `<a class="td-out-f" href="${encodeURI(DX_EDU_BASE+f.path)}" target="_blank" rel="noopener"
+        `<a class="td-out-f" href="${encodeURI(DX_EDU_BASE+f.path)}" ${fileLinkAttrs(f)}
             title="${esc(f.name)}${f.sizeKB?' · '+f.sizeKB+'KB':''}">${FILE_ICON[f.type]||'📎'} ${esc((f.type||'').toUpperCase())}</a>`
       ).join('')
     + '</div>';
 }
 
 // 제출된 산출물 목록 — dx_output_record.py 가 채운 attendees[].dxOutput 을 읽는다.
+// DX_OUTPUT_VISIBLE_EMAILS 로 카드에 공개할 사람만 추린다.
 function dxOutputList(rows){
   const done=rows.filter(dxOutputVisible);
   if(!done.length) return '';
@@ -1973,7 +1967,7 @@ function dxOutputList(rows){
     ${done.map(a=>{
       const o=a.dxOutput;
       const files=(o.files||[]).map(f=>
-        `<a class="ro-file" href="${encodeURI(DX_EDU_BASE+f.path)}" target="_blank" rel="noopener">
+        `<a class="ro-file" href="${encodeURI(DX_EDU_BASE+f.path)}" ${fileLinkAttrs(f)}>
            <span>${FILE_ICON[f.type]||'📎'}</span><span>${esc(f.name)}</span>
            ${f.sizeKB?`<span class="sz">${f.sizeKB}KB</span>`:''}
          </a>`).join('');
@@ -2140,11 +2134,14 @@ function renderCompanyCompGrid() {
   const companies=[...new Set(allLearners.map(l=>l.company||'미상'))].sort();
   const cards=companies.map(c=>{
     const group=allLearners.filter(l=>l.company===c);
-    // 수료 = 전 과정 15개 완료 (필수 4개만 이수한 인원은 진행 중으로 본다)
+    // 관계사별 카드 주지표 = 필수 완료(필수 4개 M01~M04 모두 이수, %·막대그래프 기준).
+    // '수료'(전 과정 15개 완료) 인원수는 하단에 참고용으로 함께 표기한다.
+    // (2026-08-18: 인사팀 확정 — 주지표는 필수 완료로 단일화하되, 전체 이수 인원수는 남겨둠)
+    const reqCount=group.filter(l=>REQUIRED_MODS.every(m=>l.modules&&l.modules[m.id]&&l.modules[m.id].completed)).length;
     const passCount=group.filter(l=>(l.completionRate||0)>=100).length;
-    const rate=group.length?Math.round(passCount/group.length*100):0;
+    const rate=group.length?Math.round(reqCount/group.length*100):0;
     const rateColor=rate>=80?'var(--green)':rate>=60?'var(--gold)':'var(--red)';
-    return `<div class="comp-card"><div class="comp-card-name">${c}</div><div class="comp-card-pct" style="color:${rateColor};">${rate}%</div><div class="comp-card-bar"><div class="comp-card-fill" style="width:${rate}%;background:${rateColor}"></div></div><div class="comp-card-sub">${passCount}/${group.length}명 필수 완료</div></div>`;
+    return `<div class="comp-card"><div class="comp-card-name">${c}</div><div class="comp-card-pct" style="color:${rateColor};">${rate}%</div><div class="comp-card-bar"><div class="comp-card-fill" style="width:${rate}%;background:${rateColor}"></div></div><div class="comp-card-sub">${reqCount}/${group.length}명 필수 완료 · 전체 이수 ${passCount}/${group.length}명</div></div>`;
   }).join('');
   document.getElementById('companyCompGrid').innerHTML=cards||'<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">데이터 없음</div></div>';
 }
@@ -2309,7 +2306,7 @@ function rptSteps(learners,co,t){
   const avg=learners.length?Math.round(learners.reduce((s,l)=>s+(l.completionRate||0),0)/learners.length):0;
   const notStarted=learners.filter(l=>!(l.completionRate>0)).length;
   const weekAgo=Date.now()/1000-604800;
-  const inactive=learners.filter(l=>!l.lastActiveAt||(l.lastActiveAt.seconds||0)<weekAgo).length;
+  const inactive=learners.filter(l=>(!l.lastActiveAt||(l.lastActiveAt.seconds||0)<weekAgo)&&!reqCourseDone(l)).length;
   if(t!==null&&t!==undefined){const un=t-learners.length;if(un>0)steps.push([`미등록 ${un}명 포털 가입 안내 (대상 ${t}명 중 ${learners.length}명 등록)`,'이번 주 중']);}
   if(notStarted>0&&learners.length)steps.push([`미시작 ${notStarted}명 개별 독려 연락`,'이번 주 중']);
   if(inactive>0&&learners.length)steps.push([`최근 미접속 ${inactive}명 재참여 유도`,'이번 주 중']);
