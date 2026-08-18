@@ -1881,7 +1881,7 @@ function renderSessionCards() {
         <div class="att-rate-bar"><div class="att-rate-fill" style="width:${rate}%;background:${rateColor}"></div></div>
         <div class="att-rate-pct" style="color:${rateColor};">${rate}%</div>
       </div>
-      ${s.id==='dx_20260813_offlinecamp'?dxSessionDocs(s):''}
+      ${sessionDocs(s)}
     </div>`;
   }).join('');
   document.getElementById('sessionCardGrid').innerHTML=cards+dxResultCard(filtered);
@@ -1912,6 +1912,22 @@ const DX_OUTPUT_VISIBLE_EMAILS=[
 function dxOutputVisible(a){
   return !!a.dxOutput && (!DX_OUTPUT_VISIBLE_EMAILS.length || DX_OUTPUT_VISIBLE_EMAILS.includes((a.email||'').toLowerCase()));
 }
+// 세션 카드 문서 링크 진입점.
+// DX 심화캠프는 참석·제출 수치를 링크 설명에 곁들여야 해서 전용 렌더러를 쓰고,
+// 그 밖의 세션은 offline_attendance 문서의 docs[] 를 그대로 읽어 만든다.
+//   docs: [{file:'파일명.html', label:'표시명', badge:'배지', icon:'📊', note:'툴팁'}]
+// file 은 DX_EDU_BASE 기준 상대경로다(관리자판=교육 폴더, 임원 배포판=results/).
+function sessionDocs(s){
+  if(s.id==='dx_20260813_offlinecamp') return dxSessionDocs(s);
+  const docs=Array.isArray(s.docs)?s.docs:[];
+  if(!docs.length) return '';
+  return `<div class="session-docs">${docs.map(d=>
+    `<a class="session-plan-link doc-res" href="${encodeURI(DX_EDU_BASE+(d.file||''))}"
+        target="_blank" rel="noopener" title="${esc(d.note||d.label||'')}">
+       ${d.badge?`<span class="spl-badge">${esc(d.badge)}</span>`:''}${esc(d.icon||'📄')} ${esc(d.label||d.file||'')}<span class="spl-go">열기 →</span></a>`
+  ).join('')}</div>`;
+}
+
 // 세션 카드 자체에 다는 문서 링크 묶음 — 교육계획·결과보고서·산출물 종합.
 // (결과보고서·산출물 종합은 원래 우측 결과 패널에 있었으나, 그 패널은 '우수 과제'
 //  강조용으로 비우고 문서 진입점은 세션 카드로 모았다. 2026-08-18 지시)
