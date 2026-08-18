@@ -740,6 +740,20 @@ const FIREBASE_CONFIG = {
   measurementId:     "G-8V5R5Z2Y44"
 };
 const ADMIN_UID = 'VBqsJ1lPrmNiVzvKB60X4XPtOF23';
+// ▼ 임원 열람 허용 이메일. 한 명 추가하려면 두 가지를 모두 해야 한다:
+//    ① Firebase 콘솔 > Authentication > Users > "사용자 추가" 로 그 이메일의 계정을 만든다
+//       (비밀번호는 여기서 정한다. 계정이 없으면 명단에 넣어도 로그인 자체가 안 된다)
+//    ② 아래 배열에 같은 이메일을 한 줄 추가하고 재배포한다
+//    ※ 주의 — 이 명단은 '화면 표시'만 거른다. Firestore 규칙상 읽기는 아직
+//      로그인한 사용자 전체에 열려 있어(learners/offline_attendance), 계정을 가진
+//      직원이 개발자도구로 원천 데이터를 조회하는 것까지는 막지 못한다.
+//      서버 단에서 막으려면 firestore.rules 의 read 조건을 함께 좁혀야 한다.
+const VIEWER_EMAILS = [
+  'slee@investorunited.co.kr',
+  'yeyoon@investorunited.co.kr',   // 윤영은 — 2026-08-18 추가
+];
+const canView = u => !!u && (u.uid === ADMIN_UID ||
+  VIEWER_EMAILS.map(e=>e.toLowerCase()).includes((u.email||'').toLowerCase()));
 
 // ── 비제조(임원+관리직) 교육 참여 대상 인원 ────────────────────────
 //   출처: 워크포스 인원변동현황(2026-03) · 생산직/현장기사/선원 제외.
