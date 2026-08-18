@@ -564,6 +564,7 @@ tr:hover td{background:var(--bg);}
   </div>
   <div class="session-card-grid" id="sessionCardGrid"><div class="loading"><div class="spinner"></div>세션 로딩 중...</div></div>
 
+  <div id="dxCampSection">
   <div class="section-title">🚀 DX 과제 선정 · 온라인 국비교육 연계 현황
     <span style="font-weight:400;font-size:12px;color:var(--gray);margin-left:8px;">8/13 오프라인 심화캠프 연계 · HR-2026-DX-교육-08</span>
   </div>
@@ -575,6 +576,7 @@ tr:hover td{background:var(--bg);}
     </div>
     <div id="dxTableWrap"><div class="loading"><div class="spinner"></div>데이터 로딩 중...</div></div>
   </div>
+  </div><!-- /dxCampSection -->
 
 </div>
 </div>
@@ -1857,6 +1859,7 @@ function setOfflineTrack(track) {
 
 function renderSessionCards() {
   const filtered=activeOfflineTrack==='전체'?allOffline:allOffline.filter(s=>s.track===activeOfflineTrack);
+  toggleDxCampSection(!!filtered.find(s=>s.id==='dx_20260813_offlinecamp'));
   if(!filtered.length){
     document.getElementById('sessionCardGrid').innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📋</div><div class="empty-msg">해당 트랙의 세션이 없습니다</div></div>';
     return;
@@ -1912,6 +1915,13 @@ const DX_OUTPUT_VISIBLE_EMAILS=[
 function dxOutputVisible(a){
   return !!a.dxOutput && (!DX_OUTPUT_VISIBLE_EMAILS.length || DX_OUTPUT_VISIBLE_EMAILS.includes((a.email||'').toLowerCase()));
 }
+// 8/13 심화캠프 전용 블록(하단 'DX 과제 선정 · 회신 현황' KPI+표)의 표시 여부.
+// 캠프 카드·결과 산출물 패널과 한 세트라, 캠프가 안 보이는 트랙에서는 같이 감춘다.
+function toggleDxCampSection(show){
+  const el=document.getElementById('dxCampSection');
+  if(el) el.style.display = show ? '' : 'none';
+}
+
 // 세션 카드 문서 링크 진입점.
 // DX 심화캠프는 참석·제출 수치를 링크 설명에 곁들여야 해서 전용 렌더러를 쓰고,
 // 그 밖의 세션은 offline_attendance 문서의 docs[] 를 그대로 읽어 만든다.
