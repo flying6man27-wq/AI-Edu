@@ -210,6 +210,10 @@ tr:hover td{background:var(--bg);}
 .result-outputs{margin-top:11px;border-top:1px solid var(--border);padding-top:10px;}
 .result-outputs .ro-h{font-size:11px;font-weight:800;color:var(--gray);margin-bottom:7px;}
 .ro{background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px;}
+/* 우수 과제로 뽑아 올린 산출물 — 표의 전체 목록과 구분되게 금색으로 강조한다 */
+.ro.best{border:1.5px solid var(--gold);box-shadow:0 2px 10px rgba(0,0,0,.05);}
+.ro-best-tag{font-size:10px;font-weight:800;color:var(--gold);background:var(--gold-dim,#fdf3e0);
+  padding:2px 7px;border-radius:4px;}
 .ro:last-child{margin-bottom:0;}
 .ro-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .ro-who{font-size:12px;font-weight:800;color:var(--text);}
@@ -232,6 +236,14 @@ tr:hover td{background:var(--bg);}
 .session-plan-link .spl-badge{font-size:10px;font-weight:800;color:#E82076;background:rgba(232,32,118,.09);
   padding:2px 7px;border-radius:5px;flex-shrink:0;}
 .session-plan-link .spl-go{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:800;color:#E82076;}
+/* 교육계획·결과보고서·산출물 종합을 세션 카드 하단에 한 묶음으로 세운다.
+   묶음 전체가 점선 구분선을 한 번만 갖도록 개별 링크의 border-top 은 지운다. */
+.session-docs{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);
+  display:flex;flex-direction:column;gap:9px;}
+.session-docs .session-plan-link{margin-top:0;padding-top:0;border-top:none;}
+.session-plan-link.doc-res:hover{color:var(--teal);}
+.session-plan-link.doc-res .spl-badge{color:var(--teal);background:var(--teal-dim);}
+.session-plan-link.doc-res .spl-go{color:var(--teal);}
 /* 온보딩 히트맵은 OB01~06 6칸 — .heatmap-grid 의 15칸 고정을 덮어쓴다 */
 #obHeatmapGrid{grid-template-columns:repeat(6,1fr);}
 .obs-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:4px;}
@@ -482,14 +494,14 @@ tr:hover td{background:var(--bg);}
       <div class="chart-wrap" style="height:200px;"><canvas id="chartScore"></canvas></div>
     </div>
     <div class="chart-box">
-        <option value="not">미시작</option>
-      </select>
-      <input class="table-search" id="tableSearch" type="text" placeholder="이름 또는 이메일 검색..." oninput="renderTable()">
+      <div class="chart-box-title">KPI 달성 현황</div>
+      <div class="chart-box-sub">목표 대비 달성률 레이더 차트</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="chartKpi"></canvas></div>
     </div>
-    <div id="tableWrap"><div class="loading"><div class="spinner"></div>데이터 로딩 중...</div></div>
   </div>
 </div>
 </div>
+
 
 <!-- ═══════════════════════════════════════════════════
      TAB: 온보딩 (신규입사자 OB01~OB06)
@@ -635,15 +647,15 @@ tr:hover td{background:var(--bg);}
         <option value="req">필수 완료(4개)</option>
         <option value="progress">진행 중</option>
         <option value="not">미시작</option>
-  <div class="mon-alerts" id="monAlerts"></div>
-      <label style="font-size:12px;font-weight:700;color:var(--text2)">관계사</label>
-      <select id="rptCompany" onchange="renderReportTab()"></select>
-      <button class="rr-print" onclick="printReport()">🖨 인쇄 / PDF 저장</button>
+      </select>
+      <input class="table-search" id="compSearch" type="text" placeholder="이름·이메일 검색..." oninput="renderCompletionTable()">
     </div>
-    <div id="rptBody"><div class="rr-empty"><div class="i">📑</div><div>관계사를 선택하세요</div></div></div>
+    <div id="completionTableWrap"><div class="loading"><div class="spinner"></div>데이터 로딩 중...</div></div>
   </div>
 </div>
 </div>
+
+
 
 </div><!-- /mainPage -->
 
@@ -1869,7 +1881,7 @@ function renderSessionCards() {
         <div class="att-rate-bar"><div class="att-rate-fill" style="width:${rate}%;background:${rateColor}"></div></div>
         <div class="att-rate-pct" style="color:${rateColor};">${rate}%</div>
       </div>
-      ${s.id==='dx_20260813_offlinecamp'?`<a class="session-plan-link" href="${encodeURI(DX_PLAN_HREF)}" target="_blank" rel="noopener"><span class="spl-badge">HR-2026-DX-교육-07</span>📋 1일 교육계획<span class="spl-go">열기 →</span></a>`:''}
+      ${s.id==='dx_20260813_offlinecamp'?dxSessionDocs(s):''}
     </div>`;
   }).join('');
   document.getElementById('sessionCardGrid').innerHTML=cards+dxResultCard(filtered);
@@ -1891,54 +1903,64 @@ function fileLinkAttrs(f){
   if((f.type||'').toLowerCase()==='html') return 'target="_blank" rel="noopener"';
   return `download="${esc(f.name)}"`;
 }
-// 카드에 공개할 산출물 제출자를 이메일로 지정 — 검토가 끝난 사람만 여기 추가한다.
-// 비워두면 dxOutput이 있는 전원이 노출된다.
+// 결과 패널에 '우수 과제'로 올릴 제출자를 이메일로 지정한다.
+// 여기 없는 제출자도 하단 'DX 과제 선정 · 회신 현황' 표에는 전원 그대로 나온다.
+// 비워두면 dxOutput이 있는 전원이 우수 과제로 노출되므로 반드시 선정자만 남긴다.
 const DX_OUTPUT_VISIBLE_EMAILS=[
-  'hyunwoo024@mizzifood.com',   // 김현우 · 상일식품
-  'jeongwon.hwang@gpin.co.kr',  // 황정원 · 좋은사람들
-  'harry@humexcargo.com',       // 유정우 · 휴맥스해운항공
-  'syshin@investorunited.co.kr',// 신수용 · 인베스터유나이티드
-  'minji@ooriintertex.co.kr',   // 김민지 · 우리인터텍스
+  'hyunwoo024@mizzifood.com',   // 김현우 · 상일식품 — 카드 공개 대상은 이 1명만 유지(2026-08-18 지시)
 ];
 function dxOutputVisible(a){
   return !!a.dxOutput && (!DX_OUTPUT_VISIBLE_EMAILS.length || DX_OUTPUT_VISIBLE_EMAILS.includes((a.email||'').toLowerCase()));
 }
+// 세션 카드 자체에 다는 문서 링크 묶음 — 교육계획·결과보고서·산출물 종합.
+// (결과보고서·산출물 종합은 원래 우측 결과 패널에 있었으나, 그 패널은 '우수 과제'
+//  강조용으로 비우고 문서 진입점은 세션 카드로 모았다. 2026-08-18 지시)
+function dxSessionDocs(s){
+  const rows=s.attendees||[];
+  const attended=dxAttendedCount(s);
+  const picked=rows.filter(a=>a.dxStatus==='회신완료').length;
+  const submitted=rows.filter(a=>!!a.dxOutput).length;
+  return `<div class="session-docs">
+    <a class="session-plan-link" href="${encodeURI(DX_PLAN_HREF)}" target="_blank" rel="noopener">
+      <span class="spl-badge">HR-2026-DX-교육-07</span>📋 1일 교육계획<span class="spl-go">열기 →</span></a>
+    <a class="session-plan-link doc-res" href="${encodeURI(DX_REPORT_HREF)}" target="_blank" rel="noopener"
+       title="${s.date} 실행 결과 · 참석 ${attended}/${s.targetCount||0}명 · 과제 선정 ${picked}명">
+      <span class="spl-badge">HR-2026-DX-교육-10</span>📊 결과보고서<span class="spl-go">열기 →</span></a>
+    ${submitted>0?`<a class="session-plan-link doc-res" href="${encodeURI(DX_OUTPUTS_HREF)}" target="_blank" rel="noopener"
+       title="제출자별 산출물 ${submitted}건 모음">
+      <span class="spl-badge">HR-2026-DX-교육-11</span>🗂️ 산출물 종합<span class="spl-go">열기 →</span></a>`:''}
+  </div>`;
+}
+
+// attendees[].status 가 채워지지 않은 회차가 있어 세션 카드(=attendedCount)와 숫자가 어긋난다.
+// 문서 필드가 있으면 그것을 우선하고, 없을 때만 행 단위로 센다.
+function dxAttendedCount(s){
+  const rows=s.attendees||[];
+  return typeof s.attendedCount==='number' ? s.attendedCount
+                                           : rows.filter(a=>a.status==='attended').length;
+}
+
 function dxResultCard(sessions){
   const s=sessions.find(x=>x.id==='dx_20260813_offlinecamp');
   if(!s)return '';
   const rows=s.attendees||[];
-  const attended=rows.filter(a=>a.status==='attended').length;
+  const attended=dxAttendedCount(s);
   const picked=rows.filter(a=>a.dxStatus==='회신완료').length;
-  const submitted=rows.filter(dxOutputVisible).length;   // 카드에 공개하기로 지정한 제출자 수
+  const submitted=rows.filter(a=>!!a.dxOutput).length;   // 실제 접수된 산출물 전체
+  const best=rows.filter(dxOutputVisible).length;        // 그중 카드에 올리는 우수 과제
   return `<div class="result-card">
     <div class="result-head">
-      <div class="result-title">📄 교육 결과 · 산출물</div>
-      <span class="result-badge">HR-2026-DX-교육-10</span>
+      <div class="result-title">🏅 제출된 산출물 ${submitted}건 중 우수 과제 ${best}건</div>
+      <span class="result-badge">HR-2026-DX-교육-11</span>
       ${submitted<picked?'<span class="result-badge pend">산출물 수집 중</span>':''}
     </div>
-    <a class="result-link" href="${encodeURI(DX_REPORT_HREF)}" target="_blank" rel="noopener">
-      <span class="rl-ico">📊</span>
-      <span class="rl-tx">
-        <b>AI DX 오프라인 심화캠프 결과보고서</b>
-        <small>${s.date} 실행 결과 · 참석 ${attended}/${s.targetCount||0}명 · 과제 선정 ${picked}명</small>
-      </span>
-      <span class="rl-go">열기 →</span>
-    </a>
-    ${submitted>0?`<a class="result-link" href="${encodeURI(DX_OUTPUTS_HREF)}" target="_blank" rel="noopener">
-      <span class="rl-ico">🗂️</span>
-      <span class="rl-tx">
-        <b>DX과제 산출물 종합</b>
-        <small>HR-2026-DX-교육-11 · 제출자별 산출물 ${submitted}건 모음</small>
-      </span>
-      <span class="rl-go">열기 →</span>
-    </a>`:''}
     <div class="result-grid">
       <div class="rg"><div class="rgv">${attended}<small>/${s.targetCount||0}명</small></div><div class="rgl">참석 실적</div></div>
       <div class="rg"><div class="rgv">${picked}<small>명</small></div><div class="rgl">DX 과제 선정</div></div>
       <div class="rg${submitted<picked?' pend':''}"><div class="rgv">${submitted}<small>/${picked}명</small></div><div class="rgl">산출물 제출</div></div>
     </div>
     ${dxOutputList(rows)}
-    ${submitted<picked?`<div class="result-note">나머지 ${picked-submitted}명은 <b>제출 대기</b> 중입니다 — 접수되는 대로 이 영역에 연결됩니다.</div>`:''}
+    <div class="result-note">전체 제출 현황은 아래 <b>DX 과제 선정 · 회신 현황</b> 표에서 인원별로 확인합니다${submitted<picked?` — 나머지 ${picked-submitted}명은 <b>제출 대기</b> 중입니다`:''}.</div>
   </div>`;
 }
 
@@ -1956,14 +1978,14 @@ function dxOutputCell(a){
     + '</div>';
 }
 
-// 제출된 산출물 목록 — dx_output_record.py 가 채운 attendees[].dxOutput 을 읽는다.
-// DX_OUTPUT_VISIBLE_EMAILS 로 카드에 공개할 사람만 추린다.
+// 우수 과제 목록 — dx_output_record.py 가 채운 attendees[].dxOutput 을 읽고
+// DX_OUTPUT_VISIBLE_EMAILS 로 선정자만 추린다(전체 현황은 하단 표가 담당).
 function dxOutputList(rows){
   const done=rows.filter(dxOutputVisible);
   if(!done.length) return '';
   done.sort((a,b)=>String(b.dxOutput.submittedAt||'').localeCompare(String(a.dxOutput.submittedAt||'')));
   return `<div class="result-outputs">
-    <div class="ro-h">제출된 산출물 ${done.length}건</div>
+    <div class="ro-h">우수 과제 ${done.length}건 — 전사 공유 대상</div>
     ${done.map(a=>{
       const o=a.dxOutput;
       const files=(o.files||[]).map(f=>
@@ -1971,10 +1993,11 @@ function dxOutputList(rows){
            <span>${FILE_ICON[f.type]||'📎'}</span><span>${esc(f.name)}</span>
            ${f.sizeKB?`<span class="sz">${f.sizeKB}KB</span>`:''}
          </a>`).join('');
-      return `<div class="ro">
+      return `<div class="ro best">
         <div class="ro-top">
           <span class="ro-who">${esc(a.name||'—')}</span>
           <span class="ro-co">${esc(a.company||'—')}</span>
+          <span class="ro-best-tag">🏅 우수 과제</span>
           <span class="ro-date">${esc(o.submittedAt||'')}</span>
         </div>
         <div class="ro-title">${esc(o.title||a.dxTask||'')}</div>
