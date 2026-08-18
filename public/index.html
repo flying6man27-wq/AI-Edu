@@ -557,11 +557,10 @@ tr:hover td{background:var(--bg);}
   <div class="kpi-grid-4" id="offlineKpiGrid"><div class="loading"><div class="spinner"></div>로딩 중...</div></div>
   <div class="section-title">🎯 트랙별 세션 현황</div>
   <div class="track-selector">
-    <button class="track-btn active" onclick="setOfflineTrack('전체')" id="offtrack-전체">전체</button>
-    <button class="track-btn exec" onclick="setOfflineTrack('임원')" id="offtrack-임원">👔 임원</button>
+    <button class="track-btn staff active" onclick="setOfflineTrack('일반직원')" id="offtrack-일반직원">💼 일반직원</button>
     <button class="track-btn mgr" onclick="setOfflineTrack('팀장·관리자')" id="offtrack-팀장·관리자">🗂️ 팀장·관리자</button>
-    <button class="track-btn staff" onclick="setOfflineTrack('일반직원')" id="offtrack-일반직원">💼 일반직원</button>
     <button class="track-btn champ" onclick="setOfflineTrack('AI챔피언')" id="offtrack-AI챔피언">🏆 AI챔피언</button>
+    <button class="track-btn exec" onclick="setOfflineTrack('임원')" id="offtrack-임원">👔 임원</button>
   </div>
   <div class="session-card-grid" id="sessionCardGrid"><div class="loading"><div class="spinner"></div>세션 로딩 중...</div></div>
 
@@ -734,7 +733,7 @@ let allLearners = [];
 let allChampions = [];
 let allOffline = [];
 let demoMode = false;
-let activeOfflineTrack = '전체';
+let activeOfflineTrack = '일반직원';   // '전체' 버튼 제거 — 오프라인교육 탭은 일반직원 트랙으로 시작한다
 let charts = {};
 
 // ══════════════════════════════════════════════════════════════
@@ -1851,7 +1850,8 @@ function renderOfflineKPI() {
 function setOfflineTrack(track) {
   activeOfflineTrack=track;
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('offtrack-'+track).classList.add('active');
+  const btn=document.getElementById('offtrack-'+track);   // 없는 트랙이 들어와도 죽지 않게
+  if(btn) btn.classList.add('active');
   renderSessionCards();
 }
 
