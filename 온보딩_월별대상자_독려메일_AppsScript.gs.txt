@@ -1,0 +1,310 @@
+/**
+ * 신규입사자 온보딩 — 월별 대상자 추출 · 교육 독려메일 — Google Apps Script
+ * ============================================================================
+ * 7월 입사자는 총괄 에이전트가 이미 안내메일 발송 + 교육DB 연동 완료.
+ * 이 스크립트는 그 외 월(기본값 5·6·8월) 대상자를 추려
+ *   ① Firestore 온보딩 이수현황 조회
+ *   ② 미이수자에게 진도 포함 독려메일
+ *   ③ 미발송자에게 신규 안내메일
+ * 을 수행합니다.
+ *
+ * [사전 준비 — 운영에이전트_AppsScript.gs.txt 와 동일]
+ *  appsscript.json 의 oauthScopes 에 datastore / script.send_mail / mail.google.com 필요.
+ *  실행 계정이 GCP 프로젝트 'ai-edu-seco' 편집자 이상이어야 Firestore 읽기가 됩니다.
+ *
+ * [실행 순서]
+ *  1) probeCollections()  ← ★ 최초 1회. 온보딩 컬렉션 실제 이름을 찾습니다.
+ *                            로그에 나온 이름을 아래 OB_COLLECTION 에 반영하세요.
+ *  2) previewTargets()    ← 발송 없이 대상자·진도만 로그 출력 (드라이런)
+ *  3) draftNudge()        ← 독려메일 초안 생성 → Gmail 임시보관함 확인
+ *  4) sendNudge()         ← 독려메일 실제 발송
+ * ============================================================================
+ */
+
+// ───────────────────────────── CONFIG ─────────────────────────────
+var PROJECT_ID = 'ai-edu-seco';
+
+// ★ 온보딩 이수현황이 저장된 Firestore 컬렉션 이름.
+//   대시보드 온보딩 탭 코드가 레포에 없어 확정 불가 → probeCollections() 로 먼저 확인할 것.
+var OB_COLLECTION = 'onboarding_learners';
+
+// 추려낼 입사월. 7월은 총괄 에이전트가 처리 완료했으므로 제외.
+var TARGET_MONTHS = [5, 6, 8];
+
+var OB_MODULES = ['OB01','OB02','OB03','OB04','OB05','OB06'];
+
+var PORTAL_URL    = 'https://ai-edu-seco.web.app/onboarding/';
+var DEADLINE      = '2026년 8월 21일(금)';   // 기존 8/7 기한 경과분에 대한 재설정
+var SUBJECT_NUDGE = '[SECO] 온보딩 자가학습 이수 요청 (미이수 안내)';
+var SUBJECT_NEW   = '[SECO] 신규입사자 온보딩 자가학습 안내';
+var TEST_EMAIL    = 'flying6man27@gmail.com';
+
+// ─────────────────────── 대상자 명단 (통합) ───────────────────────
+//  type : 'PILOT' 상일/미찌 | 'OTHERS' 신규채용 기타사 | 'TRANSFER' 관계사전속
+//  ※ 원본 헤더는 상반기 25명이라고 기재돼 있으나 실제 등재는 18명입니다(7명 누락).
+//  ※ 이 명단은 '상반기(1~6월)' 기준이라 8월 입사자가 존재하지 않습니다.
+//     8월분은 하반기 명단을 아래 ROSTER 에 추가해야 추출됩니다.
+var ROSTER = [
+  {name:'이지수', org:'상일식품',         email:'jisoo9824@mizzifood.com',        joined:'2월 24일', type:'PILOT'},
+  {name:'정유진', org:'상일식품',         email:'jeong@mizzifood.com',            joined:'3월 6일',  type:'PILOT'},
+  {name:'권수아', org:'상일식품',         email:'sif4600@mizzifood.com',          joined:'6월 11일', type:'PILOT'},
+  {name:'이진경', org:'미찌푸드',         email:'jklee26@mizzifood.com',          joined:'2월 24일', type:'PILOT'},
+  {name:'이동준', org:'미찌푸드',         email:'j8521@mizzifood.com',            joined:'3월 3일',  type:'PILOT'},
+  {name:'임상목', org:'미찌푸드',         email:'john0705@mizzifood.com',         joined:'3월 9일',  type:'PILOT'},
+  {name:'정주호', org:'쌤앤파커스',       email:'zooho@smpk.kr',                  joined:'1월 5일',  type:'OTHERS'},
+  {name:'구병우', org:'좋은사람들',       email:'byungwoo.ku@gpin.co.kr',         joined:'1월 27일', type:'OTHERS'},
+  {name:'김정향', org:'좋은사람들',       email:'junghyang.kim@gpin.co.kr',       joined:'4월 1일',  type:'OTHERS'},
+  {name:'김영민', org:'좋은사람들',       email:'youngmin.kim@gpin.co.kr',        joined:'6월 10일', type:'OTHERS'},
+  {name:'나민정', org:'휴맥스해운항공',   email:'mia@humexcargo.com',             joined:'3월 9일',  type:'OTHERS'},
+  {name:'최승준', org:'인터렉스메가라인', email:'choisj@megaline.kr',             joined:'1월 5일',  type:'OTHERS'},
+  {name:'박정수', org:'인터렉스메가라인', email:'jspark@megaline.kr',             joined:'2월 2일',  type:'OTHERS'},
+  {name:'이은영', org:'좋은사람들',       email:'eunyoung.lee@gpin.co.kr',        joined:'3월 1일',  type:'TRANSFER'},
+  {name:'권민호', org:'좋은사람들',       email:'minho.kwon@gpin.co.kr',          joined:'4월 1일',  type:'TRANSFER'},
+  {name:'최경호', org:'휴맥스해운항공',   email:'ckh1201@humexcargo.com',         joined:'1월 1일',  type:'TRANSFER'},
+  {name:'김규일', org:'인터렉스메가라인', email:'gikim@megaline.kr',              joined:'4월 1일',  type:'TRANSFER'},
+  {name:'윤영은', org:'인베스터유나이티드', email:'yeyoon@investorunited.co.kr',  joined:'4월 1일',  type:'TRANSFER'}
+];
+
+// ───────────────────────── 월 추출 유틸 ───────────────────────────
+function joinedMonth_(joined) {
+  var m = String(joined).match(/(\d+)\s*월/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+// TARGET_MONTHS 에 해당하는 대상자만 반환
+function targetsByMonth_(months) {
+  months = months || TARGET_MONTHS;
+  return ROSTER.filter(function(r){
+    return months.indexOf(joinedMonth_(r.joined)) >= 0;
+  });
+}
+
+// ───────────── Firestore REST 헬퍼 (운영에이전트와 동일 방식) ─────────────
+function fsBase_(){
+  return 'https://firestore.googleapis.com/v1/projects/'+PROJECT_ID+
+         '/databases/(default)/documents';
+}
+function fsHeaders_(){ return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }; }
+
+function decodeValue_(v){
+  if(v==null) return null;
+  if('stringValue'  in v) return v.stringValue;
+  if('integerValue' in v) return parseInt(v.integerValue,10);
+  if('doubleValue'  in v) return v.doubleValue;
+  if('booleanValue' in v) return v.booleanValue;
+  if('timestampValue' in v) return v.timestampValue;
+  if('mapValue'   in v) return decodeFields_(v.mapValue.fields || {});
+  if('arrayValue' in v) return (v.arrayValue.values||[]).map(decodeValue_);
+  if('nullValue'  in v) return null;
+  return null;
+}
+function decodeFields_(fields){
+  var o = {};
+  Object.keys(fields).forEach(function(k){ o[k] = decodeValue_(fields[k]); });
+  return o;
+}
+
+// 컬렉션 전체를 페이지네이션으로 읽기
+function fsList_(collection){
+  var out = [], pageToken = '';
+  do {
+    var url = fsBase_() + '/' + collection + '?pageSize=300' +
+              (pageToken ? '&pageToken='+encodeURIComponent(pageToken) : '');
+    var res = UrlFetchApp.fetch(url, { headers: fsHeaders_(), muteHttpExceptions: true });
+    if(res.getResponseCode() !== 200){
+      throw new Error('Firestore 읽기 실패 ['+collection+'] ('+res.getResponseCode()+'): '+res.getContentText());
+    }
+    var body = JSON.parse(res.getContentText());
+    (body.documents || []).forEach(function(doc){
+      var o = decodeFields_(doc.fields || {});
+      o.__id = doc.name.split('/').pop();
+      out.push(o);
+    });
+    pageToken = body.nextPageToken || '';
+  } while(pageToken);
+  return out;
+}
+
+/**
+ * ★ 최초 1회 실행. 온보딩 이수현황이 어느 컬렉션에 있는지 탐색합니다.
+ *   대시보드 온보딩 탭 코드를 확보하지 못해 컬렉션명이 확정되지 않은 상태입니다.
+ *   로그에서 문서가 잡히는 이름을 찾아 OB_COLLECTION 에 반영하세요.
+ */
+function probeCollections(){
+  var candidates = ['onboarding_learners','onboarding','onboardingLearners',
+                    'ob_learners','onboarding_progress','learners'];
+  candidates.forEach(function(c){
+    try {
+      var rows = fsList_(c);
+      Logger.log('✔ [' + c + '] 문서 ' + rows.length + '건');
+      if(rows.length){
+        Logger.log('    샘플 필드: ' + JSON.stringify(Object.keys(rows[0])));
+        Logger.log('    샘플 값  : ' + JSON.stringify(rows[0]).slice(0,500));
+      }
+    } catch(e){
+      Logger.log('✘ [' + c + '] ' + e.message.split('\n')[0]);
+    }
+  });
+}
+
+// ───────────────────────── 진도 계산 ──────────────────────────────
+// 이메일(소문자)로 온보딩 학습자 문서를 찾아 이수 모듈 수를 반환
+function buildProgressIndex_(){
+  var idx = {};
+  var rows;
+  try { rows = fsList_(OB_COLLECTION); }
+  catch(e){ Logger.log('⚠ 온보딩 컬렉션 읽기 실패 — 진도 없이 진행합니다: '+e.message.split('\n')[0]); return idx; }
+
+  rows.forEach(function(l){
+    var key = String(l.email || '').trim().toLowerCase();
+    if(!key) return;
+    var set = {};
+    if(l.modules && typeof l.modules === 'object') for(var k in l.modules) set[k] = l.modules[k];
+    for(var kk in l){ var m = kk.match(/^modules\.(.+)$/); if(m) set[m[1]] = l[kk]; }
+
+    var done = [];
+    OB_MODULES.forEach(function(id){
+      var mod = set[id];
+      if(mod && (mod.completed === true || mod === true)) done.push(id);
+    });
+    // modules 구조가 없고 completedCount 만 있는 경우 대비
+    var cnt = done.length || (typeof l.completedCount === 'number' ? l.completedCount : 0);
+    idx[key] = { done: done, count: cnt, raw: l };
+  });
+  return idx;
+}
+
+// ───────────────────────── 메일 본문 ──────────────────────────────
+// ① 독려메일 — 이미 안내를 받았으나 미이수인 대상
+function buildNudgeBody(r, prog) {
+  var cnt  = prog ? prog.count : 0;
+  var rest = OB_MODULES.length - cnt;
+  var line = (cnt > 0)
+    ? '현재 ' + cnt + '개 모듈을 이수하셨고, ' + rest + '개가 남아 있습니다.'
+    : '아직 학습을 시작하지 않으신 것으로 확인됩니다.';
+
+  return r.name + '님, 안녕하세요.\n' +
+    'SECO 비제조부문 인사팀입니다.\n\n' +
+    '앞서 안내드린 신규입사자 온보딩 자가학습 관련해 다시 연락드립니다.\n' +
+    line + '\n\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '  온보딩 자가학습 이수 현황\n' +
+    '  ' + cnt + ' / ' + OB_MODULES.length + ' 모듈 · 잔여 약 ' + (rest * 10) + '분\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '▶ 이어서 학습하기\n' +
+    PORTAL_URL + '\n' +
+    '  (이 메일을 받으신 주소로 로그인하시면 이전 진도가 그대로 이어집니다)\n\n' +
+    '▶ 잔여 학습 기한\n' +
+    '  ' + DEADLINE + '\n\n' +
+    '모바일로도 학습 가능하며, 중간에 나가셨다가 이어서 하셔도 진도는 유지됩니다.\n' +
+    '한 모듈당 10분 내외라 이동 중에도 부담 없이 진행하실 수 있습니다.\n\n' +
+    '접속이 안 되거나 진도가 실제와 다르게 표시되면 회신 주세요. 바로 확인해 드리겠습니다.\n\n' +
+    'SECO 비제조부문 인사팀 드림';
+}
+
+// ② 신규 안내메일 — 아직 안내를 받지 못한 대상(예: 8월 신규 입사자)
+function buildNewBody(r) {
+  return r.name + '님, 안녕하세요.\n' +
+    'SECO 비제조부문 인사팀입니다.\n\n' +
+    r.joined + ' ' + r.org + '에 합류하신 것을 진심으로 환영합니다.\n' +
+    '온보딩 학습을 온라인으로 편하게 하실 수 있도록 준비했습니다.\n\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '  신규입사자 온보딩 자가학습\n' +
+    '  6개 모듈 · 약 56분 · 모바일 학습 가능\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '▶ 온보딩 학습 포털\n' + PORTAL_URL + '\n\n' +
+    '▶ 학습 방법\n' +
+    '  1. 위 링크 접속\n' +
+    '  2. 성명 / 소속 회사 / 이메일 입력 후 시작\n' +
+    '     (이 메일을 받으신 주소로 입력해 주세요)\n' +
+    '  3. 모듈 학습 후 확인퀴즈 통과 시 이수 처리\n\n' +
+    '▶ 학습 내용 (OB01~OB06)\n' +
+    '  · 온보딩 이해하기 — SECO 비전체계, 입사 후 일정\n' +
+    '  · 첫인상과 매너 기본 — 인사, 명함 교환\n' +
+    '  · 회사생활 필수 용어 — 품의서, 결재/결제, 업무 약어\n' +
+    '  · 커뮤니케이션 에티켓 — 전화, 이메일, 호칭\n' +
+    '  · 보고와 스피치 스킬 — 보고 3단계, SECO 화법\n' +
+    '  · 제도·복지·보안 — 인사제도, 직원복지, 사이버 대응\n\n' +
+    '▶ 학습 기한\n  ' + DEADLINE + '까지 6개 모듈 이수 부탁드립니다.\n\n' +
+    '학습 중 접속이 안 되거나 궁금한 점이 있으시면 언제든 회신 주세요.\n' +
+    '다시 한번 입사를 환영하며, ' + r.name + '님의 SECO 여정을 응원합니다.\n\n' +
+    'SECO 비제조부문 인사팀 드림';
+}
+
+// ───────────────────── 대상자 + 진도 결합 ─────────────────────────
+function resolveTargets_(months){
+  var targets = targetsByMonth_(months);
+  var idx = buildProgressIndex_();
+  return targets.map(function(r){
+    var prog = idx[String(r.email).trim().toLowerCase()] || null;
+    var cnt  = prog ? prog.count : 0;
+    return {
+      r: r, prog: prog, count: cnt,
+      done: (cnt >= OB_MODULES.length),
+      started: !!prog
+    };
+  });
+}
+
+/**
+ * 드라이런 — 메일을 보내지 않고 대상자와 진도만 로그로 확인합니다.
+ * 실제 발송 전 반드시 먼저 실행하세요.
+ */
+function previewTargets(){
+  var list = resolveTargets_();
+  Logger.log('대상 입사월: ' + TARGET_MONTHS.join(', ') + '월');
+  Logger.log('추출 인원  : ' + list.length + '명 / 전체 명단 ' + ROSTER.length + '명');
+  Logger.log('마감일     : ' + DEADLINE);
+  Logger.log('─────────────────────────────────────────────');
+  if(!list.length){
+    Logger.log('※ 해당 월 대상자가 명단에 없습니다. ROSTER 에 해당 월 입사자를 추가하세요.');
+    return;
+  }
+  list.forEach(function(t){
+    Logger.log(
+      (t.done ? '[이수완료] ' : (t.started ? '[진행중  ] ' : '[미시작  ] ')) +
+      joinedMonth_(t.r.joined) + '월  ' + t.r.name + ' (' + t.r.org + ')  ' +
+      t.count + '/' + OB_MODULES.length + '  <' + t.r.email + '>'
+    );
+  });
+  var need = list.filter(function(t){ return !t.done; });
+  Logger.log('─────────────────────────────────────────────');
+  Logger.log('발송 대상(미이수): ' + need.length + '명 / 이수완료 제외: ' + (list.length-need.length) + '명');
+}
+
+// ───────────────────────── 발송 함수 ──────────────────────────────
+function _run(dryDraft, months){
+  var list = resolveTargets_(months);
+  var need = list.filter(function(t){ return !t.done; });   // 이수완료자는 제외
+  var sent = 0, failed = 0;
+
+  need.forEach(function(t, i){
+    // 학습 이력이 있으면 독려메일, 전혀 없으면 신규 안내메일
+    var subject = t.started ? SUBJECT_NUDGE : SUBJECT_NEW;
+    var body    = t.started ? buildNudgeBody(t.r, t.prog) : buildNewBody(t.r);
+    try {
+      if(dryDraft) GmailApp.createDraft(t.r.email, subject, body);
+      else         GmailApp.sendEmail(t.r.email, subject, body);
+      sent++;
+      Logger.log((dryDraft?'초안':'발송') + ' [' + (i+1) + '/' + need.length + '] ' +
+                 t.r.name + ' (' + t.r.org + ') ' + t.count + '/' + OB_MODULES.length +
+                 ' <' + t.r.email + '>');
+      if(!dryDraft) Utilities.sleep(400);
+    } catch(e){
+      Logger.log('FAIL ' + t.r.name + ' <' + t.r.email + '> : ' + e.message);
+      failed++;
+    }
+  });
+  Logger.log('완료 — ' + (dryDraft?'초안 ':'발송 ') + sent + '건 / 실패 ' + failed +
+             '건 / 이수완료 제외 ' + (list.length - need.length) + '건');
+}
+
+function draftNudge(){ _run(true);  }   // 초안만 생성
+function sendNudge(){  _run(false); }   // 실제 발송
+
+// 본인에게 독려메일 1건 시험발송 (대상자에게 안 나감)
+function sendNudgeTest(){
+  var sample = targetsByMonth_()[0] || ROSTER[0];
+  GmailApp.sendEmail(TEST_EMAIL, '[테스트] ' + SUBJECT_NUDGE,
+                     buildNudgeBody(sample, {count:2, done:['OB01','OB02']}));
+  Logger.log('테스트 발송 → ' + TEST_EMAIL);
+}

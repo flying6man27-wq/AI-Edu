@@ -1,0 +1,141 @@
+// ══════════════════════════════════════════════════════════════
+//  신규입사자 온보딩 자가학습 안내메일 — 2026 상반기 입사자
+//  대상 근거 : HR-2026-DX-채용-03 상반기 입사자 명단 (25명)
+//  이메일 출처 : AI역량강화 학습자 DB(Firestore) + 계열사 확인분
+//  자동 생성 : 2026-07-29
+//
+//  ── 실행 순서 ─────────────────────────────────────────────
+//   0) ★ 발송 전 필수 : PORTAL_URL 을 브라우저로 직접 열어 정상 동작 확인
+//         (대시보드 온보딩 탭이 "학습자 0명 / 전 모듈 0%"이면 미배포 가능성.
+//          죽은 링크를 신규입사자에게 보내는 것이 가장 큰 리스크입니다)
+//   1) sendTest()           본인에게 1건 시험발송 (대상자에게 안 나감)
+//   2) draftOne(0)          특정 1명 초안 생성 — 1명 실험용
+//   3) sendOne(0)           특정 1명만 실제 발송 — 1명 실험용
+//   4) createDraftsPilot()  파일럿 6명 초안만 생성 → 임시보관함 확인
+//   5) sendPilot()          파일럿 6명 실제 발송
+//   6) sendOthers()         나머지 신규채용 7명   (파일럿 결과 확인 후)
+//   7) sendTransfer()       관계사전속 5명        (발송 여부 판단 후)
+// ══════════════════════════════════════════════════════════════
+
+var PORTAL_URL = 'https://ai-edu-seco.web.app/onboarding/';
+// 2026-08-08 은 토요일이므로 금요일인 8/7 로 정정. 토요일 마감 의도였다면 '(토)'로 수정.
+var DEADLINE   = '2026년 8월 7일(금)';
+var SUBJECT    = '[SECO] 신규입사자 온보딩 자가학습 안내';
+var TEST_EMAIL = 'flying6man27@gmail.com';
+
+// ── ① 파일럿 : 상일/미찌 6명 ─────────────────────────────────
+var PILOT = [
+  {name:'이지수', org:'상일식품', email:'jisoo9824@mizzifood.com', joined:'2월 24일'},
+  {name:'정유진', org:'상일식품', email:'jeong@mizzifood.com', joined:'3월 6일'},
+  {name:'권수아', org:'상일식품', email:'sif4600@mizzifood.com', joined:'6월 11일'},
+  {name:'이진경', org:'미찌푸드', email:'jklee26@mizzifood.com', joined:'2월 24일'},
+  {name:'이동준', org:'미찌푸드', email:'j8521@mizzifood.com', joined:'3월 3일'},
+  {name:'임상목', org:'미찌푸드', email:'john0705@mizzifood.com', joined:'3월 9일'}
+];
+
+// ── ② 신규채용 기타 계열사 7명 ───────────────────────────────
+var OTHERS = [
+  {name:'정주호', org:'쌤앤파커스', email:'zooho@smpk.kr', joined:'1월 5일'},
+  {name:'구병우', org:'좋은사람들', email:'byungwoo.ku@gpin.co.kr', joined:'1월 27일'},
+  {name:'김정향', org:'좋은사람들', email:'junghyang.kim@gpin.co.kr', joined:'4월 1일'},
+  {name:'김영민', org:'좋은사람들', email:'youngmin.kim@gpin.co.kr', joined:'6월 10일'},
+  {name:'나민정', org:'휴맥스해운항공', email:'mia@humexcargo.com', joined:'3월 9일'},
+  {name:'최승준', org:'인터렉스메가라인', email:'choisj@megaline.kr', joined:'1월 5일'},
+  {name:'박정수', org:'인터렉스메가라인', email:'jspark@megaline.kr', joined:'2월 2일'}
+];
+
+// ── ③ 관계사전속(그룹 내 이동) 5명 ───────────────────────────
+//    SECO 그룹 내 이동자로, 그룹·비전 내용은 이미 접한 인원입니다.
+//    소속사 제도 안내 목적이면 발송, 아니면 제외하세요.
+//    ※ 권민호 책임은 온보딩 매뉴얼 작성자(인사팀)입니다.
+var TRANSFER = [
+  {name:'이은영', org:'좋은사람들', email:'eunyoung.lee@gpin.co.kr', joined:'3월 1일'},
+  {name:'권민호', org:'좋은사람들', email:'minho.kwon@gpin.co.kr', joined:'4월 1일'},
+  {name:'최경호', org:'휴맥스해운항공', email:'ckh1201@humexcargo.com', joined:'1월 1일'},
+  {name:'김규일', org:'인터렉스메가라인', email:'gikim@megaline.kr', joined:'4월 1일'},
+  {name:'윤영은', org:'인베스터유나이티드', email:'yeyoon@investorunited.co.kr', joined:'4월 1일'}
+];
+
+function buildBody(name, org, joined) {
+  return name + '님, 안녕하세요.\n' +
+    'SECO 비제조부문 인사팀입니다.\n\n' +
+    joined + ' ' + org + '에 합류하신 것을 진심으로 환영합니다.\n' +
+    '그동안 현업 적응하시느라 바쁘셨을 텐데, 온보딩 학습을 온라인으로 편하게 하실 수 있도록 새로 준비했습니다.\n\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '  신규입사자 온보딩 자가학습\n' +
+    '  6개 모듈 · 약 56분 · 모바일 학습 가능\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '▶ 온보딩 학습 포털\n' +
+    PORTAL_URL + '\n\n' +
+    '▶ 학습 방법\n' +
+    '  1. 위 링크 접속\n' +
+    '  2. 성명 / 소속 회사 / 이메일 입력 후 시작\n' +
+    '     (이 메일을 받으신 주소로 입력해 주세요)\n' +
+    '  3. 모듈 학습 후 확인퀴즈 통과 시 이수 처리\n\n' +
+    '▶ 학습 내용 (OB01~OB06)\n' +
+    '  · 온보딩 이해하기 — SECO 비전체계, 입사 후 일정\n' +
+    '  · 첫인상과 매너 기본 — 인사, 명함 교환\n' +
+    '  · 회사생활 필수 용어 — 품의서, 결재/결제, 업무 약어\n' +
+    '  · 커뮤니케이션 에티켓 — 전화, 이메일, 호칭\n' +
+    '  · 보고와 스피치 스킬 — 보고 3단계, SECO 화법\n' +
+    '  · 제도·복지·보안 — 인사제도, 직원복지, 사이버 대응\n\n' +
+    '▶ 학습 기한\n' +
+    '  ' + DEADLINE + '까지 6개 모듈 이수 부탁드립니다.\n\n' +
+    '중간에 나가셨다가 이어서 하셔도 진도는 그대로 유지됩니다.\n' +
+    '매뉴얼 원본을 그대로 보실 수 있어 필요할 때 다시 찾아보셔도 좋습니다.\n\n' +
+    '아울러 전 계열사 신규입사자를 대상으로 연 2회(4월·10월)\n' +
+    '온보딩 소집교육을 운영하고 있습니다. 10월 과정 참석 안내는 별도로 드리겠습니다.\n\n' +
+    '학습 중 접속이 안 되거나 궁금한 점이 있으시면 언제든 회신 주세요.\n' +
+    '다시 한번 입사를 환영하며, ' + name + '님의 SECO 여정을 응원합니다.\n\n' +
+    'SECO 비제조부문 인사팀장 미노팀장 드림';
+}
+
+function _send(list, label) {
+  var sent = 0, failed = 0;
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    try {
+      GmailApp.sendEmail(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+      sent++;
+      Logger.log('OK [' + (i+1) + '/' + list.length + '] ' + r.name + ' (' + r.org + ') <' + r.email + '>');
+      Utilities.sleep(400);
+    } catch(e) {
+      Logger.log('FAIL ' + r.name + ' <' + r.email + '> : ' + e.message);
+      failed++;
+    }
+  }
+  Logger.log('[' + label + '] 완료 — 발송 ' + sent + '건 / 실패 ' + failed + '건');
+}
+
+function _drafts(list, label) {
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    GmailApp.createDraft(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+    Logger.log('초안 ' + r.name + ' (' + r.org + ') <' + r.email + '>');
+  }
+  Logger.log('[' + label + '] 초안 ' + list.length + '건 생성 — Gmail 임시보관함 확인');
+}
+
+// ── 1명 실험용 ───────────────────────────────────────────────
+//  draftOne(0) → PILOT[0](이지수) 초안 1건만 생성. 임시보관함에서 확인 후 직접 발송.
+//  sendOne(0)  → PILOT[0] 에게 즉시 1건 발송.
+//  대상 목록을 바꾸려면 두 번째 인자로 OTHERS / TRANSFER 를 넘기세요. 예: draftOne(2, OTHERS)
+function draftOne(index, list) {
+  var r = (list || PILOT)[index || 0];
+  GmailApp.createDraft(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+  Logger.log('초안 1건 생성 → ' + r.name + ' (' + r.org + ') <' + r.email + '>');
+}
+function sendOne(index, list) {
+  var r = (list || PILOT)[index || 0];
+  GmailApp.sendEmail(r.email, SUBJECT, buildBody(r.name, r.org, r.joined));
+  Logger.log('발송 1건 → ' + r.name + ' (' + r.org + ') <' + r.email + '>');
+}
+
+// ── 실행 함수 ────────────────────────────────────────────────
+function sendTest()          { GmailApp.sendEmail(TEST_EMAIL, '[테스트] ' + SUBJECT,
+                                buildBody(PILOT[0].name, PILOT[0].org, PILOT[0].joined));
+                               Logger.log('테스트 발송 → ' + TEST_EMAIL); }
+function createDraftsPilot() { _drafts(PILOT, '파일럿'); }
+function sendPilot()         { _send(PILOT, '파일럿 상일/미찌'); }
+function sendOthers()        { _send(OTHERS, '신규채용 기타사'); }
+function sendTransfer()      { _send(TRANSFER, '관계사전속'); }
