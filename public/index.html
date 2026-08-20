@@ -1837,9 +1837,13 @@ function daysDiff(ts){const d=Math.floor((Date.now()-ts)/86400000);if(d===0)retu
 // 10. OFFLINE TAB
 // ══════════════════════════════════════════════════════════════
 function renderOfflineKPI() {
-  const total=allOffline.length;
-  const totalAtt=allOffline.reduce((s,s2)=>s+(s2.attendedCount||0),0);
-  const totalTarget=allOffline.reduce((s,s2)=>s+(s2.targetCount||0),0);
+  // kpiExclude 세션은 집계에서 뺀다. 별도 교육이 아니라 기존 세션 안의 활동을
+  // 따로 카드로 세운 것이라(예: 8/13 캠프의 AI챔피언 촉진 활동), 세션 수·참석 인원에
+  // 넣으면 같은 사람을 두 번 세게 된다.
+  const counted=allOffline.filter(s=>!s.kpiExclude);
+  const total=counted.length;
+  const totalAtt=counted.reduce((s,s2)=>s+(s2.attendedCount||0),0);
+  const totalTarget=counted.reduce((s,s2)=>s+(s2.targetCount||0),0);
   const avgRate=totalTarget?Math.round(totalAtt/totalTarget*100):0;
   const absent=totalTarget-totalAtt;
   document.getElementById('offlineKpiGrid').innerHTML=
@@ -1879,11 +1883,17 @@ function renderSessionCards() {
         <span class="session-tag" style="background:var(--blue-dim);color:var(--blue);">${s.company||'—'}</span>
         <span class="session-tag ${cls==='exec'?'td-track-exec':cls==='mgr'?'td-track-mgr':cls==='staff'?'td-track-staff':'td-track-champ'}">${s.track}</span>
       </div>
-      <div class="att-rate-wrap">
-        <div class="att-rate-label">${s.attendedCount||0}/${s.targetCount||0}명</div>
-        <div class="att-rate-bar"><div class="att-rate-fill" style="width:${rate}%;background:${rateColor}"></div></div>
-        <div class="att-rate-pct" style="color:${rateColor};">${rate}%</div>
-      </div>
+      ${s.kpiExclude
+        // 참석 세션이 아니라 활동 기록이다. 참석률 막대 대신 역할·활동을 적는다.
+        ? `<div style="font-size:12.5px;line-height:1.65;color:var(--text2);
+                 background:var(--bg2,#F6F7FB);border-radius:8px;padding:9px 11px;margin-top:2px;">
+             ${esc(s.note||'')}
+           </div>`
+        : `<div class="att-rate-wrap">
+             <div class="att-rate-label">${s.attendedCount||0}/${s.targetCount||0}명</div>
+             <div class="att-rate-bar"><div class="att-rate-fill" style="width:${rate}%;background:${rateColor}"></div></div>
+             <div class="att-rate-pct" style="color:${rateColor};">${rate}%</div>
+           </div>`}
       ${sessionDocs(s)}
     </div>`;
   }).join('');
@@ -1931,11 +1941,15 @@ function sessionDocs(s){
   if(s.id==='dx_20260813_offlinecamp') return dxSessionDocs(s);
   const docs=Array.isArray(s.docs)?s.docs:[];
   if(!docs.length) return '';
-  return `<div class="session-docs">${docs.map(d=>
-    `<a class="session-plan-link doc-res" href="${encodeURI(DX_EDU_BASE+(d.file||''))}"
-        target="_blank" rel="noopener" title="${esc(d.note||d.label||'')}">
-       ${d.badge?`<span class="spl-badge">${esc(d.badge)}</span>`:''}${esc(d.icon||'📄')} ${esc(d.label||d.file||'')}<span class="spl-go">열기 →</span></a>`
-  ).join('')}</div>`;
+  // d.file 은 results/ 아래 상대경로, d.url 은 외부 링크(예: 챔피언 포트폴리오).
+  // 외부 링크는 DX_EDU_BASE 를 붙이면 안 되고 noreferrer 까지 달아 내보낸다.
+  return `<div class="session-docs">${docs.map(d=>{
+    const ext=!!d.url;
+    const href=ext?esc(d.url):encodeURI(DX_EDU_BASE+(d.file||''));
+    return `<a class="session-plan-link doc-res" href="${href}"
+        target="_blank" rel="noopener${ext?' noreferrer':''}" title="${esc(d.note||d.label||'')}">
+       ${d.badge?`<span class="spl-badge">${esc(d.badge)}</span>`:''}${esc(d.icon||'📄')} ${esc(d.label||d.file||d.url||'')}<span class="spl-go">열기 →</span></a>`;
+  }).join('')}</div>`;
 }
 
 // 세션 카드 자체에 다는 문서 링크 묶음 — 교육계획·결과보고서·산출물 종합.
@@ -2001,6 +2015,11 @@ function dxOutputCell(a){
         `<a class="td-out-f" href="${encodeURI(DX_EDU_BASE+f.path)}" ${fileLinkAttrs(f)}
             title="${esc(f.name)}${f.sizeKB?' · '+f.sizeKB+'KB':''}">${FILE_ICON[f.type]||'📎'} ${esc((f.type||'').toUpperCase())}</a>`
       ).join('')
+    // 첨부 대신 본문에 배포 URL을 적어 낸 제출(dxOutput.links). 파일칩과 같은 자리에 링크칩으로 띄운다.
+    + (o.links||[]).map(u=>
+        `<a class="td-out-f" href="${esc(u)}" target="_blank" rel="noopener noreferrer"
+            title="${esc(u)}">🔗 LINK</a>`
+      ).join('')
     + '</div>';
 }
 
@@ -2018,6 +2037,11 @@ function dxOutputList(rows){
         `<a class="ro-file" href="${encodeURI(DX_EDU_BASE+f.path)}" ${fileLinkAttrs(f)}>
            <span>${FILE_ICON[f.type]||'📎'}</span><span>${esc(f.name)}</span>
            ${f.sizeKB?`<span class="sz">${f.sizeKB}KB</span>`:''}
+         </a>`).join('')
+      // 본문 URL 제출 — 내려받을 파일이 없으므로 링크를 그대로 연다.
+      + (o.links||[]).map(u=>
+        `<a class="ro-file" href="${esc(u)}" target="_blank" rel="noopener noreferrer">
+           <span>🔗</span><span>${esc(u.replace(/^https?:\/\//,'').replace(/\/$/,''))}</span>
          </a>`).join('');
       return `<div class="ro best">
         <div class="ro-top">
