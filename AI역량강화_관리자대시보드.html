@@ -725,6 +725,18 @@ const REQUIRED_MODS = MODULES.filter(m=>m.badge==='required');
 // ══════════════════════════════════════════════════════════════
 const AUTH_KEY = 'ai_dash_auth_v1';
 let db = null;
+// ─── Supabase 병행쓰기 (마이그레이션용, 2026-09-15 추가) — public_stats만 대상.
+// companies는 firestore.rules에 규칙이 없어 쓰기 자체가 막혀있어 보류, ops_snapshots는
+// 완전 admin 전용이라 신뢰수준을 낮추지 않기 위해 브라우저 병행쓰기는 하지 않는다(백필만 별도 완료).
+const SUPA_URL = 'https://cbqejxndcpuijujvsmtl.supabase.co';
+const SUPA_KEY = 'sb_publishable_ic57vTCggDx8m7LSMWPsfQ_MxDVU82o';
+function supaPublishStats(stats) {
+  fetch(`${SUPA_URL}/rest/v1/rpc/edu_public_stats_upsert`, {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: 'latest', p_data: stats })
+  }).catch(function(){});
+}
 let allLearners = [];
 let allChampions = [];
 let allOffline = [];
@@ -1047,6 +1059,7 @@ function publishPublicStats(force){
   var key=JSON.stringify(stats.group)+'|'+stats.companies.map(function(c){return c.company+':'+c.registered+'-'+c.enrolled+'-'+c.avgCompletion+'-'+c.active7d+'-'+c.reqDone;}).join(',');
   if(!force && key===_lastPubKey) return;
   _lastPubKey=key;
+  supaPublishStats(stats);
   return db.collection('public_stats').doc('latest').set(Object.assign({},stats,{generatedAt:firebase.firestore.FieldValue.serverTimestamp()}))
     .catch(function(e){console.warn('[publicStats]',e); _lastPubKey='';});
 }

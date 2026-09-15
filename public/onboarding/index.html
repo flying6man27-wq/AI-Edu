@@ -934,6 +934,17 @@ const FIREBASE_CONFIG = {
 
 let db = null;
 const USER_KEY   = 'ob_portal_user_v1';
+
+// ─── Supabase 병행쓰기 (마이그레이션용, 2026-09-15 추가) ──────────────────────
+const SUPA_URL = 'https://cbqejxndcpuijujvsmtl.supabase.co';
+const SUPA_KEY = 'sb_publishable_ic57vTCggDx8m7LSMWPsfQ_MxDVU82o';
+function supaUpsertOnboarding(p_id, p_name, p_company, p_email, p_completed_count, p_completion_rate, p_total_modules, p_modules) {
+  fetch(`${SUPA_URL}/rest/v1/rpc/edu_onboarding_learner_upsert`, {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id, p_name, p_company, p_email, p_completed_count, p_completion_rate, p_total_modules, p_modules: p_modules || null })
+  }).catch(() => {});
+}
 const SCORES_KEY = 'ob_portal_scores_v1';
 
 let authReady = null;
@@ -988,6 +999,8 @@ function getCurrentUser() {
 }
 
 async function syncUserToFirebase(user) {
+  supaUpsertOnboarding(user.uid, user.name, user.company, user.email,
+    getDoneCount(), Math.round(getDoneCount() / MODULES.length * 100), MODULES.length);
   if (!db) return;
   if (authReady) await authReady;
   try {
@@ -1005,7 +1018,12 @@ async function syncUserToFirebase(user) {
 
 async function syncModuleToFirebase(id, score) {
   const user = getCurrentUser();
-  if (!db || !user) return;
+  if (!user) return;
+  const p = getProgress(), s = getScores(), modules = {};
+  Object.keys(p).forEach(mid => { if (p[mid]) modules[mid] = { completed: true, score: (s[mid] && s[mid].score) || 0 }; });
+  supaUpsertOnboarding(user.uid, user.name, user.company, user.email,
+    getDoneCount(), Math.round(getDoneCount() / MODULES.length * 100), MODULES.length, modules);
+  if (!db) return;
   if (authReady) await authReady;
   try {
     // 중첩 map(modules:{M01:{...}})으로 저장한다. set+merge가 modules 맵 내부로 깊은 병합한다.

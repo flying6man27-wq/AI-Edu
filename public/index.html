@@ -731,6 +731,9 @@ const REQUIRED_MODS = MODULES.filter(m=>m.badge==='required');
 // ══════════════════════════════════════════════════════════════
 const AUTH_KEY = 'ai_dash_auth_v1';
 let db = null;
+// 참고: 이 파일(Firebase Hosting, ai-edu-seco.web.app)은 ops_snapshots만 쓰고
+// public_stats/companies는 쓰지 않는다 — Supabase 병행쓰기는 실제로 쓰는
+// AI역량강화_관리자대시보드.html(GitHub Pages) 쪽에서만 추가했다.
 let allLearners = [];
 let allChampions = [];
 let allOffline = [];
