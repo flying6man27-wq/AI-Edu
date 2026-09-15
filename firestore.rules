@@ -15,25 +15,42 @@ service cloud.firestore {
     // 관리자 UID(대시보드 ADMIN_UID). 커스텀클레임 쓰면 request.auth.token.admin == true 로 교체.
     function admin() { return signedIn() && request.auth.uid == 'VBqsJ1lPrmNiVzvKB60X4XPtOF23'; }
 
-    // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만, 기록(create/update)은 유지
+    // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만
+    //   (2026-08 강화) create/update가 `if true` 였다. 인증 없이 누구나 임의 문서를
+    //   만들거나 남의 이수기록을 위조할 수 있어 이수율 통계를 신뢰할 수 없었다.
+    //   포털은 learners/{user.uid} 에 쓰므로(문서ID=uid) 본인 문서로 한정한다.
+    //   관리자는 대시보드에서 보정해야 하므로 예외를 둔다.
     match /learners/{docId} {
       allow read:           if signedIn();   // ★ 익명 전량조회 차단
-      allow create, update: if true;          // 학습포털 진도 기록 유지(차기 강화)
+      allow create, update: if admin() || (signedIn() && request.auth.uid == docId);
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
 
-    // AI챔피언 후보 추천 — 읽기 인증, 제출은 유지, 수정 관리자, 삭제 차단
+    // 신규입사자 온보딩 자가학습(OB01~OB06) — learners와 동일 정책, 컬렉션만 분리
+    //   ※ AI역량강화 통계(분모 15개 모듈)가 오염되지 않도록 별도 컬렉션 사용
+    //   온보딩 포털도 onboarding_learners/{user.uid} 에 쓴다(문서ID=uid).
+    match /onboarding_learners/{docId} {
+      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow create, update: if admin() || (signedIn() && request.auth.uid == docId);
+      allow delete:         if admin();       // ★ 삭제 관리자만
+    }
+
+    // AI챔피언 후보 추천 — 읽기 인증, 수정 관리자, 삭제 차단
+    //   (2026-08 강화) create가 `if true` 였다. 추천폼은 .add()로 자동ID를 쓰므로
+    //   uid 스코프를 걸 수 없다. 대신 인증을 요구해 무인증 대량 등록을 막는다.
     match /champion_nominees/{docId} {
       allow read:   if signedIn();            // ★ 후보 명단 익명조회 차단
-      allow create: if true;                  // 추천폼 제출 유지
+      allow create: if signedIn();            // ★ 무인증 제출 차단
       allow update: if admin();
       allow delete: if false;
     }
 
-    // 오프라인 교육 출석 — 읽기 인증, 기록 유지, 수정 관리자, 삭제 차단
+    // 오프라인 교육 출석 — 읽기 인증, 수정 관리자, 삭제 차단
+    //   (2026-08 강화) create가 `if true` 였다. 출석은 이수 인정 근거이므로
+    //   무인증 등록을 막는다.
     match /offline_attendance/{docId} {
       allow read:   if signedIn();            // ★ 출석명단 익명조회 차단
-      allow create: if true;
+      allow create: if signedIn();            // ★ 무인증 출석기록 차단
       allow update: if admin();
       allow delete: if false;
     }
@@ -49,6 +66,13 @@ service cloud.firestore {
     match /public_stats/{docId} {
       allow read:  if true;     // 집계만 공개 — PII 없음
       allow write: if admin();  // ★ 발행은 관리자(대시보드)만
+    }
+
+    // 관계사 레지스트리(이름·목표인원) — PII 없음. 관리자 대시보드 전용 CRUD.
+    //   (2026-09-15 발견) 규칙이 아예 없어 "그 외 모든 경로는 기본 거부"에 걸려
+    //   관리자 로그인 상태에서도 조회·저장이 전부 PERMISSION_DENIED 였다.
+    match /companies/{docId} {
+      allow read, write: if admin();
     }
 
     // 그 외 모든 경로는 기본 거부
