@@ -16,22 +16,25 @@ service cloud.firestore {
     function admin() { return signedIn() && request.auth.uid == 'VBqsJ1lPrmNiVzvKB60X4XPtOF23'; }
 
     // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만
-    //   (2026-08 강화) create/update가 `if true` 였다. 인증 없이 누구나 임의 문서를
-    //   만들거나 남의 이수기록을 위조할 수 있어 이수율 통계를 신뢰할 수 없었다.
-    //   포털은 learners/{user.uid} 에 쓰므로(문서ID=uid) 본인 문서로 한정한다.
-    //   관리자는 대시보드에서 보정해야 하므로 예외를 둔다.
+    //   (2026-09-15 되돌림) `admin() || auth.uid==docId` 조건이 실제로는 항상 거짓이었다.
+    //   포털이 문서ID로 쓰는 값(makeUid(email), 이메일 해시)과 익명 로그인의
+    //   실제 auth.uid(랜덤값)가 절대 같을 수 없어, 2026-08 강화 이후 모든 학습자의
+    //   진도 저장이 실측으로 확인된 채 조용히 실패하고 있었다(uid==docId 위조 방지
+    //   의도였지만 정상 사용자까지 막음). champion_nominees/offline_attendance와
+    //   같은 수준(signedIn() 요구, 위조 방지는 안 됨)으로 되돌려 저장을 복구한다.
     match /learners/{docId} {
       allow read:           if signedIn();   // ★ 익명 전량조회 차단
-      allow create, update: if admin() || (signedIn() && request.auth.uid == docId);
+      allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
 
     // 신규입사자 온보딩 자가학습(OB01~OB06) — learners와 동일 정책, 컬렉션만 분리
     //   ※ AI역량강화 통계(분모 15개 모듈)가 오염되지 않도록 별도 컬렉션 사용
     //   온보딩 포털도 onboarding_learners/{user.uid} 에 쓴다(문서ID=uid).
+    //   (2026-09-15 되돌림) learners와 동일한 사유로 uid==docId 조건 제거.
     match /onboarding_learners/{docId} {
       allow read:           if signedIn();   // ★ 익명 전량조회 차단
-      allow create, update: if admin() || (signedIn() && request.auth.uid == docId);
+      allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
 
