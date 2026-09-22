@@ -938,12 +938,45 @@ const USER_KEY   = 'ob_portal_user_v1';
 // ─── Supabase 병행쓰기 (마이그레이션용, 2026-09-15 추가) ──────────────────────
 const SUPA_URL = 'https://cbqejxndcpuijujvsmtl.supabase.co';
 const SUPA_KEY = 'sb_publishable_ic57vTCggDx8m7LSMWPsfQ_MxDVU82o';
+// 2026-09-23 추가 — 예전엔 실패하면 .catch(()=>{}) 로 완전히 침묵해서, 네트워크
+// 순간 끊김 한 번에 그 사람 진도가 Supabase 에서 영원히 뒤처져도 아무 흔적이
+// 안 남았다(실측 사례: 온보딩 학습자 1명, Firestore completedCount=6인데
+// Supabase completed_count=0). 실패를 콘솔에 남기고, localStorage 에 큐잉해서
+// 다음 접속 때 자동 재시도한다. Firestore 쓰기·학습자 화면 동작은 그대로다.
+const SUPA_RETRY_KEY = 'ob_portal_supa_retry_v1';
+function supaRetryQueueSave(id, payload) {
+  try {
+    const q = JSON.parse(localStorage.getItem(SUPA_RETRY_KEY) || '{}');
+    q[id] = payload;
+    localStorage.setItem(SUPA_RETRY_KEY, JSON.stringify(q));
+  } catch {}
+}
+function supaRetryQueueClear(id) {
+  try {
+    const q = JSON.parse(localStorage.getItem(SUPA_RETRY_KEY) || '{}');
+    if (q[id]) { delete q[id]; localStorage.setItem(SUPA_RETRY_KEY, JSON.stringify(q)); }
+  } catch {}
+}
+function supaRetryQueueFlush() {
+  let q; try { q = JSON.parse(localStorage.getItem(SUPA_RETRY_KEY) || '{}'); } catch { return; }
+  Object.keys(q).forEach(id => {
+    const p = q[id];
+    if (p) supaUpsertOnboarding(p.p_id, p.p_name, p.p_company, p.p_email, p.p_completed_count, p.p_completion_rate, p.p_total_modules, p.p_modules);
+  });
+}
 function supaUpsertOnboarding(p_id, p_name, p_company, p_email, p_completed_count, p_completion_rate, p_total_modules, p_modules) {
+  const payload = { p_id, p_name, p_company, p_email, p_completed_count, p_completion_rate, p_total_modules, p_modules: p_modules || null };
   fetch(`${SUPA_URL}/rest/v1/rpc/edu_onboarding_learner_upsert`, {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_id, p_name, p_company, p_email, p_completed_count, p_completion_rate, p_total_modules, p_modules: p_modules || null })
-  }).catch(() => {});
+    body: JSON.stringify(payload)
+  }).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    supaRetryQueueClear(p_id);
+  }).catch((e) => {
+    console.warn('[Supabase] 온보딩 동기화 실패 — 다음 접속 때 재시도합니다:', e);
+    supaRetryQueueSave(p_id, payload);
+  });
 }
 const SCORES_KEY = 'ob_portal_scores_v1';
 
@@ -1430,6 +1463,7 @@ function showQuizDone(m) {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 initFirebase();
+supaRetryQueueFlush();  // 지난 접속에서 Supabase 동기화가 실패해 쌓인 진도가 있으면 재시도
 const _savedUser = getCurrentUser();
 renderHome();
 updateGlobalProgress();
