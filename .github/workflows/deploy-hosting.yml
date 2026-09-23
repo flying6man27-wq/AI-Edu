@@ -33,11 +33,12 @@ jobs:
           EXPECTED: ${{ inputs.expected_changes }}
         run: |
           python3 - <<'EOF'
-          import hashlib, os, subprocess, sys, urllib.parse, urllib.request
+          import difflib, hashlib, os, subprocess, sys, urllib.parse, urllib.request
           base = "https://ai-edu-seco.web.app/"
           expected = {s.strip() for s in os.environ.get("EXPECTED", "").split(",") if s.strip()}
-          files = subprocess.run(["git", "ls-files", "public"], capture_output=True, text=True,
-                                 check=True).stdout.splitlines()
+          # -z: 한글 파일명을 따옴표·8진수로 감싸지 않은 원래 경로로 받는다
+          files = [f for f in subprocess.run(["git", "ls-files", "-z", "public"], capture_output=True,
+                                             check=True).stdout.decode("utf-8").split("\0") if f]
           diff, missing = [], []
           for f in files:
               rel = f[len("public/"):]
@@ -52,6 +53,13 @@ jobs:
               local = open(f, "rb").read()
               if hashlib.sha1(live).digest() != hashlib.sha1(local).digest():
                   diff.append(rel)
+                  if rel not in expected and rel.endswith(".html"):
+                      a = local.decode("utf-8", "replace").splitlines()
+                      b = live.decode("utf-8", "replace").splitlines()
+                      d = list(difflib.unified_diff(a, b, "저장소", "라이브", n=0, lineterm=""))
+                      print(f"── {rel}: 저장소 {len(a)}줄 / 라이브 {len(b)}줄, 바뀐 줄 {sum(1 for x in d if x[:1] in '+-') - 2}")
+                      for x in d[:60]:
+                          print("   " + x[:200])
           print(f"대조 파일 {len(files)}개 — 다름 {len(diff)} · 라이브에 없음 {len(missing)}")
           for r in diff:
               print(("  예상된 변경  " if r in expected else "  ✗ 예상 밖   ") + r)
