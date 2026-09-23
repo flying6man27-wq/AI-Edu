@@ -1010,6 +1010,15 @@ function doLogin() {
     alert('이름, 소속 회사, 이메일을 모두 입력해 주세요.');
     return;
   }
+  // 진도(STORAGE_KEY·SCORES_KEY)는 사용자별이 아니라 브라우저 전체에 하나라, 전에 이 브라우저를
+  // 쓴 사람의 완료 기록이 새로 로그인한 사람에게 그대로 넘어갔다(2026-09-22 실측: 모듈 기록 0건인
+  // 신규입사자가 로그인 한 번으로 6/6 이수로 기록됨). 로그인 주체가 바뀌면 로컬 진도를 비운다 —
+  // 본인 진도는 아래 restoreProgressAndRefresh() 가 클라우드(Firestore)에서 되살린다.
+  const prev = getCurrentUser();
+  if (!prev || String(prev.email || '').toLowerCase() !== email) {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SCORES_KEY);
+  }
   const user = { name, company, email, uid: makeUid(email), startedAt: Date.now() };
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   document.getElementById('loginOverlay').classList.add('hidden');
