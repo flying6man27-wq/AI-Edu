@@ -7,7 +7,11 @@
 # 한다. 그 밖의 파일은 라이브 그대로 유지된다. Firestore 규칙은 건드리지 않는다.
 #
 # 1) 대조(항상, 자격증명 불필요): 라이브와 public/ 의 차이를 로그로 보여준다(참고용, 차단 안 함).
-# 2) 배포(deploy=true 일 때만): 저장소 시크릿 FIREBASE_SERVICE_ACCOUNT(서비스 계정 JSON 전체) 필요.
+# 2) 배포(deploy=true 일 때만): 키 파일 없이 Workload Identity Federation 으로 인증한다.
+#    (조직 정책 iam.disableServiceAccountKeyCreation 으로 서비스 계정 키 발급이 막혀 있다 — 2026-09-23)
+#    GitHub 가 발급한 OIDC 토큰을 Google 이 직접 검증하므로 저장소에 비밀값이 없다.
+#    Google 쪽 준비(1회): 풀 github / 공급자 ai-edu (이 저장소의 main 브랜치만 허용),
+#    서비스 계정 gh-hosting-deploy@ai-edu-seco (roles/firebasehosting.admin).
 name: deploy-hosting
 
 on:
@@ -24,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write   # GitHub OIDC 토큰 발급(키 없는 Google 인증용)
 
 jobs:
   hosting:
@@ -106,22 +111,26 @@ jobs:
               sys.exit(1)
           EOF
 
+      - name: Google 인증 (키 없음 — Workload Identity Federation)
+        if: inputs.deploy == 'true' && steps.guard.outputs.safe == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/58934449948/locations/global/workloadIdentityPools/github/providers/ai-edu
+          service_account: gh-hosting-deploy@ai-edu-seco.iam.gserviceaccount.com
+
       - name: Hosting 부분 배포 (라이브 복제 + 지정 파일만 교체)
         if: inputs.deploy == 'true' && steps.guard.outputs.safe == 'true'
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FILES: ${{ inputs.expected_changes }}
         run: |
-          if [ -z "$SA" ]; then echo "FIREBASE_SERVICE_ACCOUNT 시크릿이 없습니다."; exit 1; fi
           pip install --quiet google-auth requests
           python3 - <<'EOF'
           import gzip, hashlib, json, os, re, sys, time
+          import google.auth
           import google.auth.transport.requests
-          from google.oauth2 import service_account
           SITE = "ai-edu-seco"
           API = "https://firebasehosting.googleapis.com/v1beta1"
-          cred = service_account.Credentials.from_service_account_info(
-              json.loads(os.environ["SA"]), scopes=["https://www.googleapis.com/auth/firebase.hosting"])
+          cred, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/firebase.hosting"])
           s = google.auth.transport.requests.AuthorizedSession(cred)
 
           def ok(r):
