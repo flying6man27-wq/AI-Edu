@@ -7,6 +7,17 @@ rules_version = '2';
 //   ▸ delete: if true → 관리자(admin)만. 외부 삭제 차단.
 //   ▸ create/update: 학습포털·추천폼 기록이 끊기지 않도록 유지(차기: 익명인증+검증으로 추가 강화).
 //   배포: 이 파일 저장 후  firebase deploy --only firestore:rules
+//
+//   [하드닝 v3 — 2026-09-30] 명단 조회(list)는 관리자·열람자(viewer)만.
+//   ▸ 왜: 포털은 익명 로그인을 쓰므로 signedIn() 은 "공개 웹 키를 가진 누구나"와 같다. 익명 로그인 한 번이면
+//     learners·onboarding_learners·offline_attendance·champion_nominees 전체(이메일·소속·진도)를 가져갈 수
+//     있었다(people-hub 정합 점검 스크립트가 실제로 이 방식으로 전량 조회 — 실증).
+//   ▸ 학습자 영향 없음: 두 포털은 자기 문서 1건만 get/set 한다(doc(user.uid)). get 은 그대로 둔다.
+//   ▸ 열람자는 이메일이 아니라 UID 로 지정한다 — Firebase 이메일 가입이 열려 있으면 아직 계정이 없는
+//     이메일은 누구나 먼저 만들 수 있어, 이메일 목록은 가로채일 수 있다. UID 는 위조할 수 없다.
+//   ▸ ⚠ 배포 전에 VIEWER_UIDS 의 자리표시자를 실제 UID 로 바꿀 것(Firebase 콘솔 → Authentication → Users 의
+//     '사용자 UID' 열). 자리표시자는 어떤 계정과도 맞지 않으므로, 안 바꾸고 배포하면 열람자만 대시보드
+//     원천 조회가 막힐 뿐 보안상 위험은 없다.
 // ══════════════════════════════════════════════════════════════
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,6 +25,14 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     // 관리자 UID(대시보드 ADMIN_UID). 커스텀클레임 쓰면 request.auth.token.admin == true 로 교체.
     function admin() { return signedIn() && request.auth.uid == 'VBqsJ1lPrmNiVzvKB60X4XPtOF23'; }
+    // 명단 열람자 — 관리자 대시보드 VIEWER_EMAILS 의 임원 계정 + people-hub 정합 점검 전용 읽기 계정.
+    function viewer() {
+      return admin() || (signedIn() && request.auth.uid in [
+        'REPLACE_WITH_UID_slee',          // slee@investorunited.co.kr (임원 열람)
+        'REPLACE_WITH_UID_yeyoon',        // yeyoon@investorunited.co.kr (임원 열람)
+        'REPLACE_WITH_UID_parity_bot'     // 정합 점검 전용 읽기 계정(edu_parity_check.py)
+      ]);
+    }
 
     // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만
     //   (2026-09-15 되돌림) `admin() || auth.uid==docId` 조건이 실제로는 항상 거짓이었다.
@@ -23,7 +42,8 @@ service cloud.firestore {
     //   의도였지만 정상 사용자까지 막음). champion_nominees/offline_attendance와
     //   같은 수준(signedIn() 요구, 위조 방지는 안 됨)으로 되돌려 저장을 복구한다.
     match /learners/{docId} {
-      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow get:            if signedIn();   // 포털: 자기 문서 1건(진도 복원)
+      allow list:           if viewer();     // ★ 명단 전량조회는 관리자·열람자만 (v3)
       allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
@@ -33,7 +53,8 @@ service cloud.firestore {
     //   온보딩 포털도 onboarding_learners/{user.uid} 에 쓴다(문서ID=uid).
     //   (2026-09-15 되돌림) learners와 동일한 사유로 uid==docId 조건 제거.
     match /onboarding_learners/{docId} {
-      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow get:            if signedIn();   // 온보딩 포털: 자기 문서 1건
+      allow list:           if viewer();     // ★ 명단 전량조회는 관리자·열람자만 (v3)
       allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
@@ -42,7 +63,7 @@ service cloud.firestore {
     //   (2026-08 강화) create가 `if true` 였다. 추천폼은 .add()로 자동ID를 쓰므로
     //   uid 스코프를 걸 수 없다. 대신 인증을 요구해 무인증 대량 등록을 막는다.
     match /champion_nominees/{docId} {
-      allow read:   if signedIn();            // ★ 후보 명단 익명조회 차단
+      allow read:   if viewer();              // ★ 후보 명단은 관리자·열람자만 (v3 — 포털은 추가만 한다)
       allow create: if signedIn();            // ★ 무인증 제출 차단
       allow update: if admin();
       allow delete: if false;
@@ -52,7 +73,7 @@ service cloud.firestore {
     //   (2026-08 강화) create가 `if true` 였다. 출석은 이수 인정 근거이므로
     //   무인증 등록을 막는다.
     match /offline_attendance/{docId} {
-      allow read:   if signedIn();            // ★ 출석명단 익명조회 차단
+      allow read:   if viewer();              // ★ 출석명단은 관리자·열람자만 (v3)
       allow create: if signedIn();            // ★ 무인증 출석기록 차단
       allow update: if admin();
       allow delete: if false;
