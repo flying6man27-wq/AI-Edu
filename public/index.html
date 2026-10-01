@@ -432,6 +432,25 @@ tr:hover td{background:var(--bg);}
   </div>
 </div>
 
+<!-- SUPABASE 로그인 오버레이 — ?src=supabase 일 때만 뜬다(이관 B단계) -->
+<div class="auth-overlay hidden" id="sbAuthOverlay">
+  <div class="auth-box">
+    <div class="auth-icon">🔑</div>
+    <div class="auth-title">Supabase 데이터 연결</div>
+    <div class="auth-sub">사내 메일(@investorunited.co.kr)로 인증 코드를 받아 입력하세요</div>
+    <div id="sbStep1">
+      <input class="auth-input" id="sbEmail" type="email" placeholder="사내 메일 주소" autocomplete="username" onkeydown="if(event.key==='Enter')sbSendCode()">
+      <button class="auth-btn" onclick="sbSendCode()">인증 코드 받기</button>
+    </div>
+    <div id="sbStep2" style="display:none">
+      <input class="auth-input" id="sbCode" type="text" inputmode="numeric" placeholder="메일로 받은 인증 코드" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')sbVerifyCode()">
+      <button class="auth-btn" onclick="sbVerifyCode()">확인</button>
+    </div>
+    <div class="auth-err" id="sbErr"></div>
+    <div class="auth-note">※ 인증이 어려우면 주소에서 ?src=supabase 를 빼고 열면 기존(Firestore) 화면입니다</div>
+  </div>
+</div>
+
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-logo">🏢 통합 관리 대시보드</div>
@@ -1089,7 +1108,128 @@ function normalizeLearner(l){
 }
 function normalizeLearners(arr){ return arr.map(normalizeLearner); }
 
+// ══════════════════════════════════════════════════════════════
+// 4-B. 데이터 원천 전환 — 교육 이관 B단계 (people-hub 99_에이전트운영/EDU_이관_계획.md)
+//   ?src=supabase 일 때만 Supabase(edu_*)에서 읽는다. 주소에 없으면 지금까지와 똑같이 Firestore.
+//   · 로그인은 기존 Firebase 관리자 로그인을 그대로 둔다. Supabase 는 사내 메일 OTP 로 추가 인증한다
+//     (RLS: @investorunited.co.kr 로그인만 SELECT — 익명은 0건).
+//   · 읽기만 바꾼다. ops_snapshots·학습자 소속변경 등 쓰기는 Firestore 그대로.
+//   · 실패하면(로그인 취소·조회 오류) 자동으로 Firestore 로 되돌아간다.
+// ══════════════════════════════════════════════════════════════
+const DATA_SRC = (new URLSearchParams(location.search).get('src') || '').toLowerCase() === 'supabase' ? 'supabase' : 'firestore';
+const SB_URL = 'https://cbqejxndcpuijujvsmtl.supabase.co';
+const SB_KEY = 'sb_publishable_ic57vTCggDx8m7LSMWPsfQ_MxDVU82o';   // 공개(publishable) 키 — 두 포털도 같은 값을 쓴다
+const SB_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js';
+const SB_JS_SRI = 'sha384-K1nraABOP/zFehpLIUksXebbs7jMpB8gYMlb+uhVKZcWT/9Vkq1+qhv6ndC+1Yuz';
+let _sb = null, _sbTimer = null, _sbSentTo = '', _srcFallback = false;
+const useSupabase = () => DATA_SRC === 'supabase' && !_srcFallback;
+
+// <supabase-adapter> — Supabase 행을 Firestore 문서 모양으로(대시보드 렌더 코드는 그대로 쓴다)
+function sbTs(v){ if(!v) return null; const t = Date.parse(v); return isNaN(t) ? null : {seconds: Math.floor(t/1000), nanoseconds: 0}; }
+function sbMapLearner(r){
+  return {id:r.id, name:r.name, company:r.company, email:r.email, startedAt:sbTs(r.started_at), lastActiveAt:sbTs(r.last_active_at),
+          completedCount:r.completed_count, completionRate:r.completion_rate, totalModules:r.total_modules, modules:r.modules || {}};
+}
+function sbMapOnboarding(r){ const o = sbMapLearner(r); if(r.edu_track) o.eduTrack = r.edu_track; return o; }
+function sbMapChampion(r){
+  return {id:r.id, submittedAt:sbTs(r.submitted_at), recommenderName:r.recommender_name, company:r.company, recommenderDept:r.recommender_dept,
+          recommenderEmail:r.recommender_email, type:r.type, candidateName:r.candidate_name, candidateLevel:r.candidate_level,
+          candidateDept:r.candidate_dept, candidateEmail:r.candidate_email, aiSkill:r.ai_skill, innovation:r.innovation,
+          leadership:r.leadership, summary:r.summary, available:r.available, managerConsent:r.manager_consent};
+}
+function sbMapOffline(r){ return Object.assign({}, r.data || {}, {id: r.id}); }
+// </supabase-adapter>
+
+function sbLoadScript(){
+  return new Promise((resolve, reject) => {
+    if (window.supabase) return resolve();
+    const s = document.createElement('script');
+    s.src = SB_JS; s.integrity = SB_JS_SRI; s.crossOrigin = 'anonymous';
+    s.onload = resolve; s.onerror = () => reject(new Error('supabase-js 로드 실패'));
+    document.head.appendChild(s);
+  });
+}
+async function sbSelectAll(table){
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const {data, error} = await _sb.from(table).select('*').order('id', {ascending:true}).range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+async function sbEnsureSession(){
+  const {data} = await _sb.auth.getSession();
+  if (data && data.session) return;
+  document.getElementById('sbAuthOverlay').classList.remove('hidden');
+  await new Promise(resolve => { window._sbAuthDone = resolve; });
+}
+async function sbSendCode(){
+  const err = document.getElementById('sbErr'); err.textContent = '';
+  const em = (document.getElementById('sbEmail').value || '').trim().toLowerCase();
+  if (!/^[^@\s]+@investorunited\.co\.kr$/.test(em)) { err.textContent = '사내 메일(@investorunited.co.kr) 주소를 입력하세요.'; return; }
+  const {error} = await _sb.auth.signInWithOtp({email: em, options: {shouldCreateUser: false}});
+  if (error) { err.textContent = '코드 발송 실패 — 계열사 인사포털에 한 번도 로그인한 적이 없으면 계정이 없을 수 있습니다.'; return; }
+  _sbSentTo = em;
+  document.getElementById('sbStep1').style.display = 'none';
+  document.getElementById('sbStep2').style.display = 'block';
+  err.textContent = em + ' 로 인증 코드를 보냈습니다.';
+}
+async function sbVerifyCode(){
+  const err = document.getElementById('sbErr'); err.textContent = '';
+  const code = (document.getElementById('sbCode').value || '').trim();
+  const {error} = await _sb.auth.verifyOtp({email: _sbSentTo, token: code, type: 'email'});
+  if (error) { err.textContent = '코드가 맞지 않거나 만료됐습니다.'; return; }
+  document.getElementById('sbAuthOverlay').classList.add('hidden');
+  if (window._sbAuthDone) window._sbAuthDone();
+}
+async function sbLoadAll(){
+  const [L, O, C, A] = await Promise.all([
+    sbSelectAll('edu_portal_learners'), sbSelectAll('edu_onboarding_learners'),
+    sbSelectAll('edu_champion_nominees'), sbSelectAll('edu_offline_attendance')]);
+  allLearners = normalizeLearners(L.map(sbMapLearner)); onLearnersUpdated();
+  obLearners = normalizeObLearners(O.map(sbMapOnboarding)); onObLearnersUpdated();
+  allChampions = C.map(sbMapChampion).sort((a, b) => ((b.submittedAt && b.submittedAt.seconds) || 0) - ((a.submittedAt && a.submittedAt.seconds) || 0)); onChampionsUpdated();
+  allOffline = A.map(sbMapOffline).sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))); onOfflineUpdated();
+  document.getElementById('syncLabel').textContent = 'Supabase 연결됨 · 60초마다 갱신 · ' + new Date().toLocaleTimeString('ko-KR');
+}
+async function initDashboardSupabase(){
+  try {
+    ensureFirebaseApp(); db = firebase.firestore();      // ops_snapshots 읽기·쓰기는 이번 단계에서 Firestore 유지
+    await sbLoadScript();
+    _sb = window.supabase.createClient(SB_URL, SB_KEY);
+    document.getElementById('syncLabel').textContent = 'Supabase 인증 대기…';
+    await sbEnsureSession();
+    await sbLoadAll();
+    document.getElementById('syncDot').style.background = 'var(--green)';
+    clearInterval(_sbTimer);
+    _sbTimer = setInterval(() => sbLoadAll().catch(e => console.warn('[supabase]', e)), 60000);
+    loadOpsHistory();
+  } catch (e) {
+    console.error('[supabase] 연결 실패 → Firestore 로 되돌립니다', e);
+    _srcFallback = true;
+    document.getElementById('sbAuthOverlay').classList.add('hidden');
+    initDashboard();
+  }
+}
+// 콘솔에서 eduCompareSources() — 두 원천의 건수·이수합을 나란히 본다(전환 전 숫자 일치 확인용).
+async function eduCompareSources(){
+  if (!_sb) { console.warn('?src=supabase 로 연 화면에서 로그인한 뒤 실행하세요'); return; }
+  const fs = async n => (await db.collection(n).get()).docs.map(d => ({id:d.id, ...d.data()}));
+  const real = a => a.filter(x => x.email || x.modules || Object.keys(x).some(k => k.startsWith('modules.')));
+  const [fl, fo] = await Promise.all([fs('learners'), fs('onboarding_learners')]);
+  const [sl, so] = await Promise.all([sbSelectAll('edu_portal_learners'), sbSelectAll('edu_onboarding_learners')]);
+  const sum = a => a.reduce((t, x) => t + (Number(x.completedCount) || 0), 0);
+  const fln = normalizeLearners(real(fl)), fon = normalizeObLearners(real(fo));
+  const sln = normalizeLearners(sl.map(sbMapLearner)), son = normalizeObLearners(so.map(sbMapOnboarding));
+  console.table([
+    {구분:'학습자', Firestore:fln.length, Supabase:sln.length, 'Firestore 이수합':sum(fln), 'Supabase 이수합':sum(sln)},
+    {구분:'온보딩', Firestore:fon.length, Supabase:son.length, 'Firestore 이수합':sum(fon), 'Supabase 이수합':sum(son)}]);
+}
+
 function initDashboard() {
+  if (useSupabase()) { initDashboardSupabase(); return; }
   if (!FIREBASE_CONFIG.projectId || FIREBASE_CONFIG.projectId === 'YOUR_PROJECT_ID') {
     activateDemoMode();
     return;
@@ -1148,6 +1288,7 @@ function activateDemoMode() {
 
 function loadAllData() {
   if (demoMode) { activateDemoMode(); return; }
+  if (useSupabase()) { sbLoadAll().catch(e => console.warn('[supabase]', e)); return; }
   if (!db) return;
   db.collection('learners').get().then(snap=>{
     allLearners = normalizeLearners(snap.docs.map(d=>({id:d.id,...d.data()})));
