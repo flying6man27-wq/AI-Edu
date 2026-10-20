@@ -9,7 +9,7 @@ rules_version = '2';
 //   배포: 이 파일 저장 후  firebase deploy --only firestore:rules
 //
 //   변경 요지(2026-10-20): 익명 로그인(학습·온보딩 포털)도 signedIn() 을 통과하므로 위 'read: signedIn()'
-//   은 실제로는 전량조회를 막지 못했다. 목록 조회(list)·쿼리·구독은 관리자·열람 계정(viewer)만 허용하고,
+//   은 실제로는 전량조회를 막지 못했다. 목록 조회(list)·쿼리·구독은 관리자·열람 계정(viewer)·동기화 전용 계정(syncBot)만 허용하고,
 //   포털이 쓰는 문서 1건 조회(get)와 create/update 는 그대로 둔다.
 //   ※ 이 파일은 deploy-hosting 워크플로로 배포되지 않는다. 배포 전 Rules Playground 로 아래를 확인할 것:
 //     ① 익명 로그인으로 learners 목록 조회 → 거부  ② 익명으로 learners/{본인uid} 1건 조회 → 허용
@@ -33,8 +33,16 @@ service cloud.firestore {
              'yeyoon@investorunited.co.kr'
            ];
     }
-    // 목록(list)·쿼리·실시간 구독은 관리자·열람 계정만. 문서 1건 조회(get)는 학습 포털의 진도 복원용으로 유지.
-    function canList() { return admin() || viewer(); }
+    // 동기화 전용 읽기 계정 — people-hub 일일 사이클(edu_sync·edu_parity_check)이 Firestore 를 읽는다.
+    //   이전에는 익명 로그인으로 컬렉션 전체를 읽었으므로, 이 계정을 만들고 스크립트를 전환한 뒤에 규칙을 배포해야 한다
+    //   (순서가 바뀌면 교육 파이프라인이 PERMISSION_DENIED 로 멈춘다). 이메일은 Firebase Auth 에 '사용자 추가'로 만든 값과 같아야 한다.
+    function syncBot() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email.lower() == 'edu-sync@investorunited.co.kr';
+    }
+    // 목록(list)·쿼리·실시간 구독은 관리자·열람 계정·동기화 계정만. 문서 1건 조회(get)는 학습 포털의 진도 복원용으로 유지.
+    function canList() { return admin() || viewer() || syncBot(); }
 
     // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만
     //   (2026-09-15 되돌림) `admin() || auth.uid==docId` 조건이 실제로는 항상 거짓이었다.
@@ -99,6 +107,13 @@ service cloud.firestore {
     //   관리자 로그인 상태에서도 조회·저장이 전부 PERMISSION_DENIED 였다.
     match /companies/{docId} {
       allow read, write: if admin();
+    }
+
+    // 열람 키 보관 — 대시보드의 참석자 명단 복호화 키(secure_config/roster.k). 사람 계정(관리자·열람)만 읽고 관리자만 쓴다.
+    //   동기화 계정(syncBot)은 명단이 필요 없으므로 일부러 제외했다.
+    match /secure_config/{docId} {
+      allow read:  if admin() || viewer();
+      allow write: if admin();
     }
 
     // 그 외 모든 경로는 기본 거부
