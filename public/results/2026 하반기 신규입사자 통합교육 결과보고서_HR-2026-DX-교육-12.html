@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>'26년 하반기 신규입사자 통합교육 결과보고 — HR-2026-DX-교육-12</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== SECO 서면보고 표준 (A4 세로) — 여백 최소화 · 본문 12pt 하한 ===== */
+:root{
+  --seco-pink:#E82076; --pink-soft:#fdeaf2;
+  --ink:#1a1d26; --sub:#464a53; --gray:#6b6e75; --mute:#95979d;
+  --line:#dadce0; --soft:#f4f5f6; --soft2:#e8eaec;
+  --ok:#0f7d47; --warn:#b0730c; --bad:#c62828;
+
+  /* 타입스케일 — 본문·표 11pt 하한 / 라벨·각주 8pt · 세부표 9.5pt (2026-08-24 개정: 제목 강조·비핵심 축소) */
+  --fs-doctitle:16pt; --fs-h2:12pt; --fs-lead:11pt;
+  --fs-body:11pt; --fs-num:21pt; --fs-cardh:11pt; --fs-label:8pt; --fs-tbl:9.5pt;
+
+  /* 여백 토큰 — 카드·제목 축약분을 보이는 여백(섹션 간격·패딩)에 재투자(2026-08-24) */
+  --page-t:9mm; --page-x:12mm; --page-b:7mm;
+  --gap-sec:7.0mm; --gap-grid:3.4mm; --pad-box:2.2mm 3.0mm;
+  --lh-body:1.52; --lh-tight:1.30;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  word-break:keep-all; overflow-wrap:break-word;
+  color:var(--ink); background:#e9ebee;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+p,li,td,th,div,span,a,h1,h2,h3,h4{word-break:keep-all;overflow-wrap:break-word}
+
+/* --- 용지 --- */
+@page{ size:A4 portrait; margin:0; }
+.sheet{
+  width:210mm; min-height:297mm; background:#fff; margin:10px auto;
+  padding:var(--page-t) var(--page-x) var(--page-b);
+  display:flex; flex-direction:column;
+  box-shadow:0 3px 14px rgba(0,0,0,.10);
+}
+
+/* --- 헤더 --- */
+.conf{background:var(--soft2);color:#5f6268;font-size:var(--fs-label);font-weight:700;
+  text-align:center;letter-spacing:.2px;padding:.8mm 0;border-radius:2px;margin-bottom:1.8mm}
+.head{display:flex;justify-content:space-between;align-items:center;
+  border-bottom:2px solid var(--seco-pink);padding-bottom:1.6mm}
+.title-row{display:flex;align-items:center;gap:2.6mm}
+.accent-bar{width:1.4mm;height:6.2mm;background:var(--seco-pink);border-radius:.6mm;flex-shrink:0}
+.doc-title{font-family:'Noto Serif KR','Noto Serif CJK KR',serif;font-size:var(--fs-doctitle);
+  font-weight:700;line-height:1.15;white-space:nowrap}
+.doc-title b{color:var(--seco-pink)}
+.head-meta{text-align:right;flex-shrink:0}
+.docno{font-size:11.5pt;font-weight:900;color:var(--seco-pink);letter-spacing:.2px}
+.meta-sub{font-size:var(--fs-label);color:var(--sub);margin-top:1.4mm;line-height:1.55}
+.meta-sub b{color:var(--ink);font-weight:700}
+
+/* --- 연속면 슬림 헤더(2면 이후) --- */
+.head-cont{display:flex;align-items:center;gap:2.4mm;
+  border-bottom:2px solid var(--seco-pink);padding-bottom:2.0mm;margin-bottom:1.6mm}
+.head-cont .accent-bar{height:4.6mm}
+.head-cont .hc-t{font-size:13pt;font-weight:900;letter-spacing:-.3px;white-space:nowrap}
+.head-cont .hc-s{font-size:var(--fs-label);color:var(--gray);font-weight:600}
+.head-cont .hc-r{margin-left:auto;text-align:right;font-size:var(--fs-label);color:var(--sub);
+  font-weight:700;white-space:nowrap}
+.head-cont .hc-r b{color:var(--seco-pink);font-size:10pt;font-weight:900}
+
+/* --- 섹션 제목 --- */
+.stitle{display:flex;align-items:center;gap:2.2mm;margin:var(--gap-sec) 0 1.3mm}
+.stitle .bar{width:1.1mm;height:3.9mm;background:var(--seco-pink);border-radius:.6mm}
+.stitle h2{font-size:var(--fs-h2);font-weight:900;letter-spacing:-.2px;line-height:1.3}
+.stitle .note{font-size:var(--fs-label);color:var(--gray);margin-left:auto;font-weight:600}
+
+/* --- 보고 요지 --- */
+.lead{border:1px solid var(--line);border-left:1.3mm solid var(--seco-pink);border-radius:1.6mm;
+  background:var(--soft);padding:3.9mm 4.0mm}
+.lead .ll{font-size:var(--fs-lead);font-weight:900;line-height:1.4;margin-bottom:1.0mm}
+.lead ul{margin:1.3mm 0 0;padding:0;list-style:none;
+  display:grid;grid-template-columns:1fr 1fr;gap:1.0mm 5mm}
+.lead li{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sub);
+  padding-left:3.2mm;position:relative}
+.lead li::before{content:"·";position:absolute;left:.8mm;color:var(--seco-pink);font-weight:900}
+.lead li b{color:var(--ink);font-weight:700}
+
+/* --- 숫자 헤드카드(본문 흡수형) --- */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap-grid)}
+.card{border:1px solid var(--line);border-radius:2mm;padding:3.7mm 3.6mm;background:#fff;
+  border-top:1.3mm solid var(--seco-pink)}
+.card.c-warn{border-top-color:var(--warn)} .card.c-ok{border-top-color:var(--ok)}
+.card .ch{display:flex;align-items:baseline;gap:2.2mm;border-bottom:1px dashed var(--soft2);
+  padding-bottom:.7mm;margin-bottom:.7mm}
+.card .no{font-size:var(--fs-label);font-weight:900;color:var(--mute);letter-spacing:.4px}
+.card .v{font-size:var(--fs-num);font-weight:900;line-height:.98;color:var(--seco-pink);
+  font-feature-settings:"tnum"}
+.card.c-warn .v{color:var(--warn)} .card.c-ok .v{color:var(--ok)}
+.card .v small{font-size:12pt;color:var(--gray);font-weight:700;margin-left:.4mm}
+.card .ct{font-size:var(--fs-cardh);font-weight:900;margin-left:auto;text-align:right;line-height:1.2}
+.card ul{margin:0;padding:0;list-style:none}
+.card li{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sub);
+  padding-left:3.4mm;padding-bottom:.3mm;position:relative}
+.card li::before{content:"·";position:absolute;left:.8mm;color:var(--seco-pink);font-weight:900}
+.card li b{color:var(--ink);font-weight:700}
+
+/* --- 후속 조치 --- */
+.act-tbl{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
+.act-tbl th{background:var(--soft2);font-size:var(--fs-label);font-weight:900;color:#3a3d44;
+  text-align:left;padding:1.2mm 2.2mm}
+.act-tbl td{padding:1.9mm 2.2mm;border-bottom:1px solid var(--soft2);vertical-align:top;
+  line-height:1.30}
+.act-tbl tr:last-child td{border-bottom:none}
+.act-tbl .idx{font-weight:900;color:var(--seco-pink);white-space:nowrap;width:6mm}
+.act-tbl .subj{font-weight:800;width:32mm}
+.act-tbl .st{white-space:nowrap;width:22mm;font-weight:800;font-size:var(--fs-label)}
+.act-tbl .st.w{color:var(--warn)} .act-tbl .st.r{color:var(--bad)} .act-tbl .st.o{color:var(--ok)}
+.act-tbl b{color:var(--ink)} .act-tbl td{color:var(--sub)}
+
+/* --- 건의 박스 --- */
+.prop{border:1.3px solid var(--seco-pink);border-radius:2mm;background:var(--pink-soft);
+  padding:3.7mm 4.0mm}
+.prop .ph{font-size:var(--fs-cardh);font-weight:900;color:var(--seco-pink);margin-bottom:.8mm}
+.prop ul{margin:0;padding:0;list-style:none}
+.prop li{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sub);
+  padding-left:3.4mm;padding-bottom:.3mm;position:relative}
+.prop li::before{content:"·";position:absolute;left:.8mm;color:var(--seco-pink);font-weight:900}
+.prop li b{color:var(--ink);font-weight:800}
+.prop a{color:var(--seco-pink);font-weight:800}
+
+/* --- 개요 스트립 --- */
+.ov{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap-grid)}
+.ov .cell{border:1px solid var(--line);border-radius:1.8mm;padding:2.4mm 2.8mm}
+.ov .k{font-size:var(--fs-label);font-weight:900;color:var(--seco-pink)}
+.ov .v{font-size:var(--fs-body);font-weight:600;margin-top:.5mm;line-height:1.22}
+
+/* --- 2단 블록 --- */
+.two{display:grid;grid-template-columns:1fr 1.62fr;gap:var(--gap-grid);align-items:start}
+.bbox{border:1px solid var(--line);border-radius:1.8mm;padding:var(--pad-box);background:#fff}
+.bbox .bh{font-size:var(--fs-label);font-weight:900;color:var(--seco-pink);
+  display:flex;align-items:center;gap:1.6mm;margin-bottom:2.0mm}
+.bbox .bh .rt{margin-left:auto;color:var(--gray)}
+.crow{display:flex;align-items:baseline;gap:2mm;padding:1.1mm 0;font-size:var(--fs-body);
+  border-bottom:1px dotted var(--soft2)}
+.crow:last-child{border-bottom:none}
+.crow .nm{font-weight:600;color:var(--sub)}
+.crow .ct{margin-left:auto;font-weight:900;font-feature-settings:"tnum"}
+.crow .ct small{font-size:var(--fs-label);color:var(--gray);margin-left:.3mm}
+.trk{display:flex;gap:2.2mm;padding:1.6mm 0;border-bottom:1px dashed var(--soft2)}
+.trk:last-child{border-bottom:none}
+.trk .badge{flex-shrink:0;font-size:var(--fs-label);font-weight:900;color:#fff;
+  background:var(--seco-pink);padding:.3mm 1.8mm;border-radius:.8mm;height:fit-content;white-space:nowrap}
+.trk .badge.g{background:#6b6e75}
+.trk .tx{font-size:var(--fs-body);line-height:var(--lh-tight);color:var(--sub)}
+.trk .tx b{color:var(--ink);font-weight:800}
+.trk .tx .who{display:block;font-size:var(--fs-label);color:var(--gray);margin-top:.8mm;line-height:1.5}
+
+/* --- 세부 표 (붙임·supplementary — 본문보다 한 단계 낮춘 9.5pt, 이름 강조 최소화, 1줄 요약 전제) --- */
+.dtl{width:100%;border-collapse:collapse;font-size:var(--fs-tbl);table-layout:fixed}
+.dtl th{background:var(--soft2);font-size:var(--fs-label);font-weight:900;color:#3a3d44;
+  text-align:left;padding:1.0mm 2.2mm}
+.dtl td{padding:.65mm 2.2mm;border-bottom:1px solid #f0f1f2;vertical-align:top;
+  line-height:1.18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dtl tr:last-child td{border-bottom:none}
+.dtl .nm{font-weight:600;color:var(--sub)}
+.dtl .co{color:var(--mute);font-size:var(--fs-label);white-space:nowrap;padding-right:1mm}
+.dtl .tsk{color:var(--ink);font-weight:500}
+.dtl .wait{color:var(--mute)}
+.sub-link{display:inline-block;margin-left:1.2mm;font-size:var(--fs-label);font-weight:900;
+  color:var(--ok);background:#e6f4ec;border-radius:.8mm;padding:0 1.2mm;
+  text-decoration:none;white-space:nowrap}
+
+.dtl-split{display:none}
+
+/* --- 푸터 --- */
+.foot{margin-top:auto;padding-top:1.2mm;border-top:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center;font-size:var(--fs-label);color:var(--sub)}
+.foot .fno{font-weight:800;color:var(--gray)}
+
+/* --- 인쇄 --- */
+@media print{
+  html,body{background:#fff}
+  /* 고정 높이로 강제 절단하지 않는다 — 내용이 길어지면 그 섹션만 자연스럽게 다음 인쇄 페이지로 흐른다.
+     각 .sheet는 "논리적 면"의 시작점만 표시하고, 실제 여러 인쇄 페이지를 차지해도 된다. */
+  .sheet{margin:0;box-shadow:none;min-height:0}
+  .sheet + .sheet{break-before:page;page-break-before:always}
+  .head,.conf,.lead,.card,.bbox,.prop,.ov .cell{break-inside:avoid;page-break-inside:avoid}
+  .stitle,h2{break-after:avoid;page-break-after:avoid}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  thead{display:table-header-group}
+  .foot{break-inside:avoid;page-break-inside:avoid}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+}
+
+
+/* ===== 가로(A4 landscape) 변형 — body.land ===== */
+/* --- 지면별 문안 변형 — 가로에서만 축약문으로 교체(세로 출력은 불변) --- */
+.la{display:none}
+body.land .po{display:none}
+body.land .la{display:inline}
+
+body.land{--page-t:8mm; --page-x:11mm; --page-b:6.6mm; --gap-sec:4.8mm;}
+body.land .sheet{width:297mm;min-height:210mm}
+body.land .doc-title{font-size:16pt}
+body.land .card .v{font-size:18pt}
+body.land .cards{grid-template-columns:repeat(4,1fr);gap:2.4mm}
+body.land .card{padding:1.75mm 2.2mm}
+body.land .lead ul{grid-template-columns:repeat(2,1fr)}
+body.land .lead{padding:2.5mm 2.8mm}
+body.land .lead ul{gap:0 4mm}
+body.land .prop{padding:1.9mm 2.4mm}
+body.land .act-tbl td{padding:1.2mm 2.0mm;line-height:1.20}
+body.land .conf{padding:.5mm 0;margin-bottom:1.6mm}
+body.land .card li,body.land .lead li,body.land .prop li{line-height:1.40}
+body.land .act-tbl .subj{width:44mm}
+body.land .act-tbl .st{width:28mm}
+/* 가로: 교육개요를 헤더 직하 1줄 스트립으로 축약 */
+body.land .sec-ov{display:none}
+body.land .ov{grid-template-columns:repeat(5,1fr);gap:0 3mm;margin-top:3.0mm}
+body.land .ov .cell{border:none;border-left:1px solid var(--line);border-radius:0;
+  padding:0 0 0 2.6mm;display:flex;align-items:baseline;gap:1.6mm}
+body.land .ov .cell:first-child{border-left:none;padding-left:0}
+body.land .ov .k{white-space:nowrap}
+body.land .ov .v{margin-top:0}
+/* 가로: 참석 결과를 칩 스트립으로 접고 트랙 박스를 전폭 사용 */
+body.land .two{display:block;margin-top:3.0mm}
+body.land .two > div:first-child .stitle{display:none}
+body.land .two > div:first-child .bbox{display:flex;flex-wrap:wrap;align-items:baseline;
+  gap:0 4.5mm;padding:1.5mm 2.8mm;margin-bottom:3.0mm}
+body.land .two > div:first-child .bh{margin-bottom:0;flex:0 0 auto}
+body.land .two > div:first-child .bh .rt{margin-left:1.6mm}
+body.land .crow{border-bottom:none;padding:.6mm 0;gap:1.2mm;flex:0 0 auto}
+body.land .crow .ct{margin-left:0}
+body.land .two > div:last-child .stitle{margin-top:0}
+body.land .two > div:last-child .bbox{display:grid;grid-template-columns:1fr 1.55fr 1fr;
+  gap:0 4.5mm;align-items:start}
+body.land .two > div:last-child .bh{grid-column:1 / -1}
+body.land .trk{border-bottom:none;padding:.4mm 0;flex-direction:column;gap:1.0mm}
+body.land .trk .badge{align-self:flex-start}
+body.land .trk .who{line-height:1.22}
+/* 세부표: 가로에서는 2단 분할본 사용 — 1줄 요약으로 짧아진 만큼 행간·패딩에 재투자 */
+body.land .dtl-single{display:none}
+body.land .dtl-split{display:grid;grid-template-columns:1fr 1fr;gap:0 3.5mm}
+body.land .dtl-split .dtl td{padding:2.1mm 1.8mm;line-height:1.30}
+
+
+/* --- 핵심 메시지: 받침 구조(위 사람 → 아래 SECO패밀리) --- */
+.msg{border:1px solid var(--line);border-radius:2mm;padding:3.4mm 4.0mm;background:#fff}
+.msg .quote{font-family:'Noto Serif KR','Noto Serif CJK KR',serif;font-size:var(--fs-body);font-weight:700;
+  line-height:var(--lh-body);color:var(--ink);border-left:1.1mm solid var(--seco-pink);padding-left:3mm;margin-bottom:3.2mm}
+.msg-body{display:grid;grid-template-columns:1.05fr 1fr;gap:4mm;align-items:center}
+.stack{display:flex;flex-direction:column;align-items:center;gap:1.0mm}
+.lv{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:1.4mm;padding:1.3mm 2mm;text-align:center}
+.lv .ln{font-size:var(--fs-body);font-weight:900;line-height:1.25}
+.lv .ld{font-size:var(--fs-label);line-height:1.35}
+.lv1{width:54%;background:var(--seco-pink);color:#fff}
+.lv2{width:68%;background:#f48bb7;color:#fff}
+.lv3{width:84%;background:var(--pink-soft);color:var(--ink);border:1px solid #f6c1d6}
+.lv4{width:100%;background:var(--soft2);color:var(--ink);border:1px solid var(--line)}
+.lv3 .ld,.lv4 .ld{color:var(--sub)}
+.imp{list-style:none;margin:0;padding:0}
+.imp li{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sub);padding-left:3.4mm;padding-bottom:1.2mm;position:relative}
+.imp li::before{content:"·";position:absolute;left:.8mm;color:var(--seco-pink);font-weight:900}
+.imp li b{color:var(--ink);font-weight:800}
+.dtl .ok{color:var(--ok);font-weight:700} .dtl .ng{color:var(--bad);font-weight:700}
+.dtl .wait{font-size:var(--fs-label);font-weight:500;margin-left:1mm}
+.two .dtl.cur td{line-height:1.30;padding:1.1mm 2.2mm}
+/* 1면(요지) 1장 맞춤 — 섹션 간격만 축소(글자 크기 불변) */
+.sheet:first-of-type{--gap-sec:4.4mm}
+@media print{.msg{break-inside:avoid;page-break-inside:avoid}}
+
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="conf">내부 한정 · 개인정보(성명) 포함 · 열람·배포 제한</div>
+  <div class="head">
+    <div class="title-row">
+      <span class="accent-bar"></span>
+      <span class="doc-title">'26년 하반기 신규입사자 통합교육 <b>결과보고</b></span>
+    </div>
+    <div class="head-meta">
+      <div class="docno">HR-2026-DX-교육-12</div>
+      <div class="meta-sub">비제조부문 인사팀 · <b>2026. 10. 20.</b></div>
+    </div>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>보고 요지</h2></div>
+  <div class="lead">
+    <div class="ll">10.20(화) 신규입사자 통합교육 시행 — 대상 12명 중 11명 참석(92%)</div>
+    <ul>
+      <li>'26.1~6월 입사자 · <b>4개사 12명</b> 대상</li>
+      <li>불참 1명 — 상일식품 권수아(자금 업무)</li>
+      <li>핵심 메시지 — <b>"사람이 먼저"</b> 받침 구조 공유</li>
+      <li>만족도·비용 집계 중 — 확정 후 보완</li>
+    </ul>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>핵심 메시지 — 사람을 받치는 SECO의 구조</h2><span class="note">사장님 말씀 정리</span></div>
+  <div class="msg">
+    <div class="quote">"사람이 맨 먼저다. 그 사람을 받치는 것이 각 계열사이고, 그 회사를 받치는 것이 부문이며, 그 부문을 받치는 것이 SECO패밀리다"</div>
+    <div class="msg-body">
+      <div class="stack">
+        <div class="lv lv1"><span class="ln">사람</span><span class="ld">구성원 한 사람 — 모든 것의 출발점</span></div>
+        <div class="lv lv2"><span class="ln">계열사</span><span class="ld">사람이 일하고 성장하는 터전</span></div>
+        <div class="lv lv3"><span class="ln">부문</span><span class="ld">비제조 · 제조 · 금융 — 계열사를 받치는 울타리</span></div>
+        <div class="lv lv4"><span class="ln">SECO패밀리</span><span class="ld">모든 부문을 받치는 가장 넓은 토대</span></div>
+      </div>
+      <ul class="imp">
+        <li>조직은 위에서 사람을 누르는 위계가 아닌 <b>아래에서 사람을 받치는 구조</b></li>
+        <li>신규입사자는 소속 계열사를 넘어 <b>부문·SECO패밀리의 지원</b>을 함께 받는 존재</li>
+        <li>인사 정책(채용·교육·평가·보상)의 판단 기준 — <b>"사람에게 도움이 되는가"</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>핵심 성과</h2></div>
+  <div class="cards">
+    <div class="card">
+      <div class="ch"><span class="no">01</span><span class="v">11<small>/12명</small></span><span class="ct">참석 실적</span></div>
+      <ul>
+        <li>참석률 <b>92%</b> · 불참 1명(상일식품)</li>
+        <li>부산사무소 1명 포함 참석</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="no">02</span><span class="v">4<small>개사</small></span><span class="ct">대상 계열사</span></div>
+      <ul>
+        <li>휴맥스 2 · 메가라인 3 · 좋은사람들 3</li>
+        <li>상일식품·미찌푸드 4</li>
+      </ul>
+    </div>
+    <div class="card c-ok">
+      <div class="ch"><span class="no">03</span><span class="v">3<small>회차</small></span><span class="ct">누적 시행</span></div>
+      <ul>
+        <li>참석률 94% → 100% → <b>92%</b></li>
+        <li>누적 참석 58명(대상 61명)</li>
+      </ul>
+    </div>
+    <div class="card c-warn">
+      <div class="ch"><span class="no">04</span><span class="v">—</span><span class="ct">만족도</span></div>
+      <ul>
+        <li>설문 집계 중 — 직전 회차 <b>4.8점</b></li>
+        <li>확정 후 본 보고 보완</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>후속 조치</h2></div>
+  <table class="act-tbl">
+    <thead><tr><th>#</th><th>과제</th><th>내용</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td class="idx">1</td><td class="subj">불참자 보충</td><td>권수아 — 핵심 메시지 개별 전달 · '27년 상반기 회차 이월 검토</td><td class="st w">검토</td></tr>
+      <tr><td class="idx">2</td><td class="subj">만족도·비용 확정</td><td>설문·정산 집계 → 본 보고 및 교육 대시보드 반영</td><td class="st w">집계 중</td></tr>
+      <tr><td class="idx">3</td><td class="subj">핵심 메시지 확산</td><td>받침 구조를 온보딩 포털 콘텐츠·계열사 HR 담당자에 공유</td><td class="st">제안</td></tr>
+      <tr><td class="idx">4</td><td class="subj">이수 기록</td><td>교육 대시보드 회차 기록 반영 — 운영 화면 배포 대기</td><td class="st o">반영</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot"><div>비제조부문 인사팀</div><div class="fno">HR-2026-DX-교육-12 · 2026. 10. 20.</div></div>
+</div>
+
+<div class="sheet">
+  <div class="head-cont">
+    <span class="accent-bar"></span>
+    <span class="hc-t">세부 현황 (붙임)</span>
+    <span class="hc-s">'26년 하반기 신규입사자 통합교육 · 2026. 10. 20.</span>
+    <span class="hc-r"><b>HR-2026-DX-교육-12</b><br>내부 한정 · 개인정보(성명) 포함</span>
+  </div>
+
+  <div class="stitle sec-ov"><span class="bar"></span><h2>교육 개요</h2></div>
+  <div class="ov">
+    <div class="cell"><div class="k">일시</div><div class="v">'26.10.20(화)</div></div>
+    <div class="cell"><div class="k">장소</div><div class="v">군포 R&amp;D센터</div></div>
+    <div class="cell"><div class="k">대상</div><div class="v">'26.1.1~6.30 입사자</div></div>
+    <div class="cell"><div class="k">방식</div><div class="v">소집교육</div></div>
+    <div class="cell"><div class="k">시간</div><div class="v">8H</div></div>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="stitle"><span class="bar"></span><h2>계열사별 참석</h2></div>
+      <div class="bbox">
+        <div class="bh">참석 / 대상<span class="rt">11 / 12명</span></div>
+        <div class="crow"><span class="nm">휴맥스해운항공</span><span class="ct">2<small>/2</small></span></div>
+        <div class="crow"><span class="nm">인터렉스메가라인</span><span class="ct">3<small>/3</small></span></div>
+        <div class="crow"><span class="nm">좋은사람들</span><span class="ct">3<small>/3</small></span></div>
+        <div class="crow"><span class="nm">상일식품·미찌푸드</span><span class="ct">3<small>/4</small></span></div>
+      </div>
+    </div>
+    <div>
+      <div class="stitle"><span class="bar"></span><h2>교육 일정</h2></div>
+      <table class="dtl cur">
+        <colgroup><col style="width:25mm"><col><col style="width:27mm"></colgroup>
+        <thead><tr><th>시간</th><th>과목</th><th>강사</th></tr></thead>
+        <tbody>
+          <tr><td>09:30~10:00</td><td class="tsk">과정 안내</td><td class="nm">—</td></tr>
+          <tr><td>10:00~10:50</td><td class="tsk">성장계획 수립</td><td class="nm">김태길 책임</td></tr>
+          <tr><td>11:00~12:00</td><td class="tsk">SECO 비전·비제조부문 미래전략</td><td class="nm">이성현 총괄대표</td></tr>
+          <tr><td>12:00~13:30</td><td class="tsk">네트워킹(점심·티타임)</td><td class="nm">—</td></tr>
+          <tr><td>13:30~16:30</td><td class="tsk">SECO 커뮤니케이션</td><td class="nm">이청아 대표</td></tr>
+          <tr><td>16:30~17:20</td><td class="tsk">AI 워크플로우</td><td class="nm">권민호 책임</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="stitle"><span class="bar"></span><h2>대상자 명단</h2><span class="note">12명 · 참석 11 · 불참 1</span></div>
+  <table class="dtl">
+    <colgroup><col style="width:9mm"><col style="width:34mm"><col><col style="width:20mm"><col style="width:22mm"><col style="width:18mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th>#</th><th>소속사</th><th>부서</th><th>성명</th><th>직급</th><th>입사</th><th>참석</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="co">휴맥스해운항공</td><td>영업본부</td><td class="nm">최경호</td><td>책임(L2)</td><td>2026-01</td><td class="ok">참석</td></tr>
+      <tr><td>2</td><td class="co">휴맥스해운항공</td><td>업무본부</td><td class="nm">나민정</td><td>책임(L1)</td><td>2026-03</td><td class="ok">참석</td></tr>
+      <tr><td>3</td><td class="co">인터렉스메가라인</td><td>공무팀</td><td class="nm">최승준</td><td>매니저</td><td>2026-01</td><td class="ok">참석 <span class="wait">부산사무소</span></td></tr>
+      <tr><td>4</td><td class="co">인터렉스메가라인</td><td>안전품질팀</td><td class="nm">박정수</td><td>매니저</td><td>2026-02</td><td class="ok">참석</td></tr>
+      <tr><td>5</td><td class="co">인터렉스메가라인</td><td>해사지원팀</td><td class="nm">최정훈</td><td>매니저</td><td>2026-03</td><td class="ok">참석</td></tr>
+      <tr><td>6</td><td class="co">좋은사람들</td><td>영업본부 미디어커머스팀</td><td class="nm">구병우</td><td>책임(L1)</td><td>2026-01</td><td class="ok">참석</td></tr>
+      <tr><td>7</td><td class="co">좋은사람들</td><td>영업본부 멀티채널팀</td><td class="nm">김정향</td><td>선임</td><td>2026-04</td><td class="ok">참석</td></tr>
+      <tr><td>8</td><td class="co">좋은사람들</td><td>브랜드커머스본부</td><td class="nm">김영민</td><td>수석(L3)</td><td>2026-06</td><td class="ok">참석</td></tr>
+      <tr><td>9</td><td class="co">상일식품·미찌푸드</td><td>영업본부</td><td class="nm">이진경</td><td>선임</td><td>2026-02</td><td class="ok">참석</td></tr>
+      <tr><td>10</td><td class="co">상일식품·미찌푸드</td><td>영업본부</td><td class="nm">이지수</td><td>매니저</td><td>2026-02</td><td class="ok">참석</td></tr>
+      <tr><td>11</td><td class="co">상일식품·미찌푸드</td><td>영업본부</td><td class="nm">정유진</td><td>매니저</td><td>2026-03</td><td class="ok">참석</td></tr>
+      <tr><td>12</td><td class="co">상일식품·미찌푸드</td><td>관리본부(회계팀)</td><td class="nm">권수아</td><td>매니저</td><td>2026-06</td><td class="ng">불참 <span class="wait">자금 업무</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot"><div>비제조부문 인사팀</div><div class="fno">HR-2026-DX-교육-12 · 2026. 10. 20.</div></div>
+</div>
+
+</body>
+</html>
