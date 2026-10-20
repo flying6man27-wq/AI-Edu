@@ -1653,10 +1653,36 @@ const OB_SESSIONS = [
     ],
   },
   {
-    // ▼ 시행 후 자료 확보되면 위 형식 그대로 채우면 카드·상세가 자동으로 살아난다.
-    id:'2026H2', half:"'26년 하반기", status:'pending',
+    // 출처: '26년 하반기 대상자 명단(12명) — 시행 당일 상일식품 권수아 1명 불참(인사팀 확인 2026-10-20).
+    //   장소·커리큘럼은 상반기와 동일 기준으로 기재. 비용·만족도는 집계되면 cost/survey 추가.
+    id:'2026H2', half:"'26년 하반기", status:'done',
     title:'비제조부문 신규입사자 통합교육',
-    note:'예정(약 10월) — 시행 후 대상·참석·커리큘럼·비용·만족도 자료를 입력하면 표시됩니다.',
+    date:'2026-10-20', dateLabel:"'26.10.20(화)", location:'군포 R&D센터',
+    method:'소집교육(강의·토의·협력적 네트워킹)',
+    cohort:"'26.1.1 ~ '26.6.30 입사자", hours:8,
+    targetCount:12, attendedCount:11, absentNote:'상일식품 권수아 1명 불참',
+    curriculum:[
+      {time:'09:30~10:00', dur:'0.5H', subject:'과정 안내',                    detail:'신규입사자 과정 안내',                                                          trainer:'—'},
+      {time:'10:00~10:50', dur:'1H',   subject:'성장계획 수립',                 detail:'성장 목표 수립 및 실천방법, 자기주도적 학습전략',                                trainer:'김태길 책임 (인재개발부문)'},
+      {time:'11:00~12:00', dur:'1H',   subject:'SECO 비전과 비제조부문 미래전략', detail:'SECO(비제조부문) 중장기 비전과 지속성장',                                       trainer:'이성현 총괄대표'},
+      {time:'12:00~13:30', dur:'1.5H', subject:'네트워킹',                     detail:'점심식사 / 티타임',                                                            trainer:'—'},
+      {time:'13:30~16:30', dur:'3H',   subject:'SECO 커뮤니케이션',             detail:"커뮤니케이션의 기초 이해(자신있게 소통, 오류 진단) / '나'의 유형을 진단, 팀원과 소통에서 합리적 대화 방법", trainer:'이청아 대표 (나비글로벌네트워크)'},
+      {time:'16:30~17:20', dur:'1H',   subject:'AI 워크플로우',                 detail:'오늘 배워 내일 바로 쓰는 실무 비법',                                            trainer:'권민호 책임 (비제조부문 인사팀장)'},
+    ],
+    attendees:[
+      {company:'휴맥스해운항공', dept:'영업본부', name:'최경호', grade:'책임(L2)', joined:'2026-01', attended:true},
+      {company:'휴맥스해운항공', dept:'업무본부', name:'나민정', grade:'책임(L1)', joined:'2026-03', attended:true},
+      {company:'인터렉스메가라인', dept:'공무팀', name:'최승준', grade:'매니저', joined:'2026-01', attended:true, note:'부산사무소'},
+      {company:'인터렉스메가라인', dept:'안전품질팀', name:'박정수', grade:'매니저', joined:'2026-02', attended:true},
+      {company:'인터렉스메가라인', dept:'해사지원팀', name:'최정훈', grade:'매니저', joined:'2026-03', attended:true},
+      {company:'좋은사람들', dept:'영업본부 미디어커머스팀', name:'구병우', grade:'책임(L1)', joined:'2026-01', attended:true},
+      {company:'좋은사람들', dept:'영업본부 멀티채널팀', name:'김정향', grade:'선임', joined:'2026-04', attended:true},
+      {company:'좋은사람들', dept:'브랜드커머스본부', name:'김영민', grade:'수석(L3)', joined:'2026-06', attended:true},
+      {company:'상일식품·미찌푸드', dept:'영업본부', name:'이진경', grade:'선임', joined:'2026-02', attended:true},
+      {company:'상일식품·미찌푸드', dept:'영업본부', name:'이지수', grade:'매니저', joined:'2026-02', attended:true},
+      {company:'상일식품·미찌푸드', dept:'영업본부', name:'정유진', grade:'매니저', joined:'2026-03', attended:true},
+      {company:'상일식품·미찌푸드', dept:'관리본부(회계팀)', name:'권수아', grade:'매니저', joined:'2026-06', attended:false, note:'불참 · 자금 업무'},
+    ],
   },
 ];
 let obSessSel = null;   // 선택된 회차 id (미지정 시 가장 최근 done 회차 자동 선택)
