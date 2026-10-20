@@ -1663,8 +1663,12 @@ let obSessSel = null;   // 선택된 회차 id (미지정 시 가장 최근 done
 
 // 진도 정본(modules 맵) 기준으로 요약필드 재계산 — learners 쪽 normalize와 동일 정책
 //   ※ _selftest:true 문서는 연결 점검용 기록이므로 집계에서 제외한다.
+// 온보딩 집계 제외 대상(인사팀 요청 2026-10-20) — DB 원본은 그대로 두고 대시보드 집계·목록에서만 뺀다.
+const OB_EXCLUDE_NAMES = ['권민호','이은영','김규일','김재현','정주호','구지윤'];
 function normalizeObLearners(list) {
-  return (list||[]).filter(l => !l._selftest).map(normalizeObLearner);
+  return (list||[])
+    .filter(l => !l._selftest && !OB_EXCLUDE_NAMES.includes(String(l.name||'').trim()))
+    .map(normalizeObLearner);
 }
 function normalizeObLearner(l) {
   const mods = (l.modules && typeof l.modules === 'object') ? {...l.modules} : {};
