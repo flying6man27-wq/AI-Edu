@@ -25,6 +25,10 @@ on:
         description: "이번에 교체 배포할 파일(public/ 기준, 쉼표 구분)"
         required: false
         default: "onboarding/index.html"
+      live_sha1:
+        description: "(선택) 교체 대상 라이브 파일을 사람이 직접 대조했을 때 그 SHA-1. 저장소 커밋과 달라도 이 값과 같으면 교체 허용"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -42,6 +46,7 @@ jobs:
         id: guard
         env:
           EXPECTED: ${{ inputs.expected_changes }}
+          LIVE_SHA1: ${{ inputs.live_sha1 }}
         run: |
           python3 - <<'EOF'
           import difflib, hashlib, os, subprocess, sys, urllib.parse, urllib.request
@@ -93,8 +98,13 @@ jobs:
                   if hashlib.sha1(blob).digest() == hashlib.sha1(live).digest():
                       hit = h
                       break
+              ack = {s.strip().lower() for s in os.environ.get("LIVE_SHA1", "").split(",") if s.strip()}
               if hit:
                   print(f"  교체 대상 {rel}: 라이브 = 저장소 커밋 {hit[:7]} 버전 → 교체 안전")
+              elif hashlib.sha1(live).hexdigest() in ack:
+                  # 라이브본에 커밋하면 안 되는 내용(평문 명단 등)이 있어 저장소에 그대로 둘 수 없을 때 —
+                  # 사람이 3-way 병합으로 라이브 변경을 저장소에 옮겼음을 확인하고 그 해시를 입력한 경우만 허용
+                  print(f"  교체 대상 {rel}: 라이브 SHA-1 = 입력한 live_sha1 (수동 대조 완료) → 교체 허용")
               else:
                   safe = False
                   print(f"  ✗ 교체 대상 {rel}: 라이브 내용이 저장소 어느 커밋과도 다름 → 교체하면 라이브 변경이 사라짐")
