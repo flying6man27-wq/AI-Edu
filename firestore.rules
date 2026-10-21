@@ -109,6 +109,29 @@ service cloud.firestore {
       allow read, write: if admin();
     }
 
+    // 교육 만족도 설문(신규입사자 통합교육 등) — 응답자별 일회용 토큰(문서ID 12자리)으로 1회 제출.
+    //   (2026-10-21) 생성만 허용(수정·삭제 불가 → 중복 제출·덮어쓰기 차단), 읽기는 관리자만.
+    //   필드·점수 범위를 검증해 임의 데이터 주입을 막는다. 성명은 저장하지 않는다.
+    match /onboarding_survey/{docId} {
+      allow read: if admin();
+      allow create: if signedIn()
+        && docId.matches('[A-Za-z0-9]{12}')
+        && request.resource.data.keys().hasOnly(['survey','intro','growth','vision','comm','ai','overall','recommend','comment','submittedAt'])
+        && request.resource.data.keys().hasAll(['survey','intro','growth','vision','comm','ai','overall','recommend','submittedAt'])
+        && request.resource.data.survey is string && request.resource.data.survey.size() <= 12
+        && request.resource.data.intro is int && request.resource.data.intro >= 1 && request.resource.data.intro <= 5
+        && request.resource.data.growth is int && request.resource.data.growth >= 1 && request.resource.data.growth <= 5
+        && request.resource.data.vision is int && request.resource.data.vision >= 1 && request.resource.data.vision <= 5
+        && request.resource.data.comm is int && request.resource.data.comm >= 1 && request.resource.data.comm <= 5
+        && request.resource.data.ai is int && request.resource.data.ai >= 1 && request.resource.data.ai <= 5
+        && request.resource.data.overall is int && request.resource.data.overall >= 1 && request.resource.data.overall <= 5
+        && request.resource.data.recommend in ['적극 추천','추천','보통','추천 안 함']
+        && (!('comment' in request.resource.data) || (request.resource.data.comment is string && request.resource.data.comment.size() <= 500))
+        && request.resource.data.submittedAt == request.time;
+      allow update: if false;
+      allow delete: if admin();
+    }
+
     // 열람 키 보관 — 대시보드의 참석자 명단 복호화 키(secure_config/roster.k). 사람 계정(관리자·열람)만 읽고 관리자만 쓴다.
     //   동기화 계정(syncBot)은 명단이 필요 없으므로 일부러 제외했다.
     match /secure_config/{docId} {
