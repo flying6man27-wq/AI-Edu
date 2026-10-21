@@ -7,6 +7,13 @@ rules_version = '2';
 //   ▸ delete: if true → 관리자(admin)만. 외부 삭제 차단.
 //   ▸ create/update: 학습포털·추천폼 기록이 끊기지 않도록 유지(차기: 익명인증+검증으로 추가 강화).
 //   배포: 이 파일 저장 후  firebase deploy --only firestore:rules
+//
+//   변경 요지(2026-10-20): 익명 로그인(학습·온보딩 포털)도 signedIn() 을 통과하므로 위 'read: signedIn()'
+//   은 실제로는 전량조회를 막지 못했다. 목록 조회(list)·쿼리·구독은 관리자·열람 계정(viewer)·동기화 전용 계정(syncBot)만 허용하고,
+//   포털이 쓰는 문서 1건 조회(get)와 create/update 는 그대로 둔다.
+//   ※ 이 파일은 deploy-hosting 워크플로로 배포되지 않는다. 배포 전 Rules Playground 로 아래를 확인할 것:
+//     ① 익명 로그인으로 learners 목록 조회 → 거부  ② 익명으로 learners/{본인uid} 1건 조회 → 허용
+//     ③ 관리자·열람 계정으로 learners 목록 조회 → 허용
 // ══════════════════════════════════════════════════════════════
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,6 +21,28 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     // 관리자 UID(대시보드 ADMIN_UID). 커스텀클레임 쓰면 request.auth.token.admin == true 로 교체.
     function admin() { return signedIn() && request.auth.uid == 'VBqsJ1lPrmNiVzvKB60X4XPtOF23'; }
+
+    // 임원 열람 계정 — 대시보드(public/index.html)의 VIEWER_EMAILS 와 반드시 같은 목록으로 유지한다.
+    //   익명 로그인(학습 포털)은 request.auth 가 있어 signedIn() 을 통과하므로, '목록 조회'는
+    //   로그인 방식(password)까지 확인해 익명 사용자를 배제한다. 한 명 추가 = 여기 + VIEWER_EMAILS 둘 다.
+    function viewer() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email.lower() in [
+             'slee@investorunited.co.kr',
+             'yeyoon@investorunited.co.kr'
+           ];
+    }
+    // 동기화 전용 읽기 계정 — people-hub 일일 사이클(edu_sync·edu_parity_check)이 Firestore 를 읽는다.
+    //   이전에는 익명 로그인으로 컬렉션 전체를 읽었으므로, 이 계정을 만들고 스크립트를 전환한 뒤에 규칙을 배포해야 한다
+    //   (순서가 바뀌면 교육 파이프라인이 PERMISSION_DENIED 로 멈춘다). 이메일은 Firebase Auth 에 '사용자 추가'로 만든 값과 같아야 한다.
+    function syncBot() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email.lower() == 'edu-sync@investorunited.co.kr';
+    }
+    // 목록(list)·쿼리·실시간 구독은 관리자·열람 계정·동기화 계정만. 문서 1건 조회(get)는 학습 포털의 진도 복원용으로 유지.
+    function canList() { return admin() || viewer() || syncBot(); }
 
     // 학습자 등록·진도 — 읽기는 인증 필요, 삭제는 관리자만
     //   (2026-09-15 되돌림) `admin() || auth.uid==docId` 조건이 실제로는 항상 거짓이었다.
@@ -23,7 +52,8 @@ service cloud.firestore {
     //   의도였지만 정상 사용자까지 막음). champion_nominees/offline_attendance와
     //   같은 수준(signedIn() 요구, 위조 방지는 안 됨)으로 되돌려 저장을 복구한다.
     match /learners/{docId} {
-      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow get:            if signedIn();   // 문서 1건 조회 — 포털이 본인 진도를 복원할 때 사용
+      allow list:           if canList();    // ★ 전량 목록 조회는 관리자·열람 계정만(익명 로그인 차단)
       allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
@@ -33,7 +63,8 @@ service cloud.firestore {
     //   온보딩 포털도 onboarding_learners/{user.uid} 에 쓴다(문서ID=uid).
     //   (2026-09-15 되돌림) learners와 동일한 사유로 uid==docId 조건 제거.
     match /onboarding_learners/{docId} {
-      allow read:           if signedIn();   // ★ 익명 전량조회 차단
+      allow get:            if signedIn();   // 문서 1건 조회 — 포털이 본인 진도를 복원할 때 사용
+      allow list:           if canList();    // ★ 전량 목록 조회는 관리자·열람 계정만(익명 로그인 차단)
       allow create, update: if signedIn();    // ★ 무인증 저장만 차단(문서ID 소유권 검증은 안 함)
       allow delete:         if admin();       // ★ 삭제 관리자만
     }
@@ -42,7 +73,7 @@ service cloud.firestore {
     //   (2026-08 강화) create가 `if true` 였다. 추천폼은 .add()로 자동ID를 쓰므로
     //   uid 스코프를 걸 수 없다. 대신 인증을 요구해 무인증 대량 등록을 막는다.
     match /champion_nominees/{docId} {
-      allow read:   if signedIn();            // ★ 후보 명단 익명조회 차단
+      allow read:   if canList();             // ★ 후보 명단 조회는 관리자·열람 계정만(추천폼은 create만 사용)
       allow create: if signedIn();            // ★ 무인증 제출 차단
       allow update: if admin();
       allow delete: if false;
@@ -52,7 +83,7 @@ service cloud.firestore {
     //   (2026-08 강화) create가 `if true` 였다. 출석은 이수 인정 근거이므로
     //   무인증 등록을 막는다.
     match /offline_attendance/{docId} {
-      allow read:   if signedIn();            // ★ 출석명단 익명조회 차단
+      allow read:   if canList();             // ★ 출석명단 조회는 관리자·열람 계정만
       allow create: if signedIn();            // ★ 무인증 출석기록 차단
       allow update: if admin();
       allow delete: if false;
@@ -76,6 +107,13 @@ service cloud.firestore {
     //   관리자 로그인 상태에서도 조회·저장이 전부 PERMISSION_DENIED 였다.
     match /companies/{docId} {
       allow read, write: if admin();
+    }
+
+    // 열람 키 보관 — 대시보드의 참석자 명단 복호화 키(secure_config/roster.k). 사람 계정(관리자·열람)만 읽고 관리자만 쓴다.
+    //   동기화 계정(syncBot)은 명단이 필요 없으므로 일부러 제외했다.
+    match /secure_config/{docId} {
+      allow read:  if admin() || viewer();
+      allow write: if admin();
     }
 
     // 그 외 모든 경로는 기본 거부

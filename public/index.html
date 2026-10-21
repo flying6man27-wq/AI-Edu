@@ -790,6 +790,7 @@ function enterDashboard(){
   document.getElementById('mainPage').style.display = 'block';
   document.getElementById('tabNav').style.display = 'flex';
   initDashboard();
+  obLoadRosters();
 }
 function doLogout() {
   firebase.auth().signOut().finally(()=>location.reload());
@@ -1570,42 +1571,8 @@ const OB_SESSIONS = [
     ],
     // ※ 상일식품·미찌푸드 8명은 원본 명단의 소속사 구분(각 3명)과 실제 판독 행 수가 맞지 않아
     //   회사 단위로 정확히 나누지 못했다. 오분류를 피하기 위해 통합 표기로 남긴다.
-    attendees:[
-      {company:'연합',        dept:'관리팀',                name:'임다애', grade:'매니저', joined:'2025-06', attended:true},
-      {company:'세코글로벌',   dept:'경영관리팀',             name:'오예지', grade:'매니저', joined:'2024-12', attended:true},
-      {company:'쌤앤파커스',   dept:'디자인실',               name:'김다현', grade:'선임',   joined:'2024-10', attended:true},
-      {company:'쌤앤파커스',   dept:'콘텐츠개발실',           name:'정혜경', grade:'책임',   joined:'2024-10', attended:true},
-      {company:'쌤앤파커스',   dept:'콘텐츠개발실',           name:'정혜인', grade:'매니저', joined:'2024-10', attended:true},
-      {company:'쌤앤파커스',   dept:'콘텐츠개발실',           name:'홍윤선', grade:'매니저', joined:'2024-10', attended:true},
-      {company:'쌤앤파커스',   dept:'코믹스개발실',           name:'백소용', grade:'책임',   joined:'2024-10', attended:true},
-      {company:'쌤앤파커스',   dept:'코믹스개발실',           name:'전인표', grade:'책임',   joined:'2025-03', attended:true},
-      {company:'쌤앤파커스',   dept:'올리개발실',             name:'장혜란', grade:'책임',   joined:'2025-01', attended:true},
-      {company:'쌤앤파커스',   dept:'올리개발실',             name:'박미진', grade:'선임',   joined:'2025-04', attended:true},
-      {company:'좋은사람들',   dept:'생산실',                 name:'이원민', grade:'선임',   joined:'2024-08', attended:true},
-      {company:'좋은사람들',   dept:'영업1본부',              name:'정지원', grade:'선임',   joined:'2024-12', attended:true},
-      {company:'좋은사람들',   dept:'영업1본부',              name:'고현욱', grade:'선임',   joined:'2025-03', attended:true},
-      {company:'좋은사람들',   dept:'영업1본부',              name:'성민제', grade:'선임',   joined:'2025-04', attended:true},
-      {company:'좋은사람들',   dept:'이커머스본부 이커머스팀', name:'최수현', grade:'선임',   joined:'2025-01', attended:true},
-      {company:'좋은사람들',   dept:'이커머스본부 이커머스팀', name:'권나용', grade:'선임',   joined:'2025-02', attended:true},
-      {company:'좋은사람들',   dept:'마케팅본부 마케팅팀',    name:'김라희', grade:'책임',   joined:'2025-02', attended:false, note:'사전답사 일정으로 불참'},
-      {company:'좋은사람들',   dept:'IT팀',                   name:'강효구', grade:'선임',   joined:'2025-01', attended:true},
-      {company:'좋은사람들',   dept:'IT팀',                   name:'진인수', grade:'책임',   joined:'2025-06', attended:true},
-      {company:'휴맥스해운항공', dept:'부산사무소',            name:'김용필', grade:'책임',   joined:'2025-01', attended:true, note:'부산사무소'},
-      {company:'휴맥스해운항공', dept:'영업본부',              name:'김선호', grade:'책임',   joined:'2025-04', attended:true},
-      {company:'휴맥스해운항공', dept:'업무본부',              name:'금경림', grade:'책임',   joined:'2025-04', attended:true},
-      {company:'휴맥스해운항공', dept:'업무본부',              name:'이현정', grade:'선임',   joined:'2025-05', attended:true},
-      {company:'휴맥스해운항공', dept:'업무본부',              name:'김민지', grade:'선임',   joined:'2024-04', attended:true, note:'참여요청'},
-      {company:'휴맥스해운항공', dept:'HD사업본부',            name:'조영미', grade:'선임',   joined:'2024-12', attended:true},
-      {company:'메가라인',     dept:'프로젝트안전팀',         name:'유재현', grade:'매니저', joined:'2025-01', attended:true},
-      {company:'상일식품·미찌푸드', dept:'생산부',             name:'이상민', grade:'과장',   joined:'2024-07', attended:false, note:'불참'},
-      {company:'상일식품·미찌푸드', dept:'물류팀',             name:'김원진', grade:'사원',   joined:'2024-07', attended:true},
-      {company:'상일식품·미찌푸드', dept:'개발본부(품질)',      name:'정남미', grade:'차장',   joined:'2025-01', attended:true},
-      {company:'상일식품·미찌푸드', dept:'영업본부',           name:'장용윤', grade:'사원',   joined:'2025-02', attended:true},
-      {company:'상일식품·미찌푸드', dept:'관리본부/회계팀',     name:'김수진', grade:'사원',   joined:'2025-04', attended:true, note:'자금·통제'},
-      {company:'상일식품·미찌푸드', dept:'영업본부',           name:'김주영', grade:'사원',   joined:'2024-12', attended:true},
-      {company:'상일식품·미찌푸드', dept:'영업본부',           name:'김민',   grade:'사원',   joined:'2025-05', attended:true},
-      {company:'상일식품·미찌푸드', dept:'개발본부(개발)',      name:'이주연', grade:'사원',   joined:'2025-05', attended:true},
-    ],
+    // 참석자 명단 — AES-256-GCM 암호문(성명·소속·직급). 복호화 키는 Firestore secure_config/roster (관리자·열람 계정만 읽기)
+    attendees:[], attendeesEnc:'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',
   },
   {
     id:'2026H1', half:"'26년 상반기", status:'done',
@@ -1634,33 +1601,18 @@ const OB_SESSIONS = [
       {time:'13:30~16:30', dur:'3H',   subject:'SECO 커뮤니케이션',             detail:"커뮤니케이션의 기초 이해(자신있게 소통, 오류 진단) / '나'의 유형을 진단, 팀원과 소통에서 합리적 대화 방법", trainer:'이청아 대표 (나비글로벌네트워크)'},
       {time:'16:30~17:20', dur:'1H',   subject:'AI 워크플로우',                 detail:'오늘 배워 내일 바로 쓰는 실무 비법',                                            trainer:'권민호 책임 (비제조부문 인사팀장)'},
     ],
-    attendees:[
-      {company:'좋은사람들',    dept:'영업1본부',   name:'이병민', grade:'선임', joined:'2025-11', attended:true},
-      {company:'좋은사람들',    dept:'영업1본부',   name:'정재호', grade:'선임', joined:'2025-11', attended:true},
-      {company:'좋은사람들',    dept:'영업2본부',   name:'김준석', grade:'책임', joined:'2025-12', attended:true},
-      {company:'좋은사람들',    dept:'경영지원본부', name:'고진훈', grade:'책임', joined:'2025-12', attended:true},
-      {company:'좋은사람들',    dept:'마케팅본부',   name:'최정길', grade:'책임', joined:'2025-08', attended:true},
-      {company:'좋은사람들',    dept:'마케팅본부',   name:'유지현', grade:'선임', joined:'2025-11', attended:true},
-      {company:'휴맥스해운항공', dept:'HD사업본부',  name:'송경원', grade:'선임', joined:'2025-10', attended:true, note:'온라인 참여(부산사무소)'},
-      {company:'휴맥스해운항공', dept:'HD사업본부',  name:'백승하', grade:'선임', joined:'2025-12', attended:true},
-      {company:'휴맥스해운항공', dept:'부산사무소',  name:'이영근', grade:'책임', joined:'2025-10', attended:true, note:'온라인 참여(부산사무소)'},
-      {company:'상일식품',      dept:'품질부',      name:'최유진', grade:'사원', joined:'2025-11', attended:true},
-      {company:'상일식품',      dept:'영업부',      name:'백창환', grade:'과장', joined:'2025-12', attended:true},
-      {company:'미찌푸드',      dept:'관리부',      name:'김수빈', grade:'주임', joined:'2025-10', attended:true},
-      {company:'미찌푸드',      dept:'개발부',      name:'황인영', grade:'사원', joined:'2025-08', attended:true},
-      {company:'미찌푸드',      dept:'품질부',      name:'김선홍', grade:'사원', joined:'2025-09', attended:true},
-      {company:'미찌푸드',      dept:'품질부',      name:'박용선', grade:'대리', joined:'2025-11', attended:true},
-    ],
+    // 참석자 명단 — AES-256-GCM 암호문(성명·소속·직급). 복호화 키는 Firestore secure_config/roster (관리자·열람 계정만 읽기)
+    attendees:[], attendeesEnc:'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',
   },
   {
-    // 출처: '26년 하반기 대상자 명단(12명) — 시행 당일 상일식품 권수아 1명 불참(인사팀 확인 2026-10-20).
+    // 출처: '26년 하반기 대상자 명단(12명) — 시행 당일 1명 불참(인사팀 확인 2026-10-20).
     //   장소·커리큘럼은 상반기와 동일 기준으로 기재. 비용·만족도는 집계되면 cost/survey 추가.
     id:'2026H2', half:"'26년 하반기", status:'done',
     title:'비제조부문 신규입사자 통합교육',
     date:'2026-10-20', dateLabel:"'26.10.20(화)", location:'군포 R&D센터',
     method:'소집교육(강의·토의·협력적 네트워킹)',
     cohort:"'26.1.1 ~ '26.6.30 입사자", hours:8,
-    targetCount:12, attendedCount:11, absentNote:'상일식품 권수아 1명 불참',
+    targetCount:12, attendedCount:11, absentNote:'1명 불참(자금 업무)',
     curriculum:[
       {time:'09:30~10:00', dur:'0.5H', subject:'과정 안내',                    detail:'신규입사자 과정 안내',                                                          trainer:'—'},
       {time:'10:00~10:50', dur:'1H',   subject:'성장계획 수립',                 detail:'성장 목표 수립 및 실천방법, 자기주도적 학습전략',                                trainer:'김태길 책임 (인재개발부문)'},
@@ -1669,20 +1621,8 @@ const OB_SESSIONS = [
       {time:'13:30~16:30', dur:'3H',   subject:'SECO 커뮤니케이션',             detail:"커뮤니케이션의 기초 이해(자신있게 소통, 오류 진단) / '나'의 유형을 진단, 팀원과 소통에서 합리적 대화 방법", trainer:'이청아 대표 (나비글로벌네트워크)'},
       {time:'16:30~17:20', dur:'1H',   subject:'AI 워크플로우',                 detail:'오늘 배워 내일 바로 쓰는 실무 비법',                                            trainer:'권민호 책임 (비제조부문 인사팀장)'},
     ],
-    attendees:[
-      {company:'휴맥스해운항공', dept:'영업본부', name:'최경호', grade:'책임(L2)', joined:'2026-01', attended:true},
-      {company:'휴맥스해운항공', dept:'업무본부', name:'나민정', grade:'책임(L1)', joined:'2026-03', attended:true},
-      {company:'인터렉스메가라인', dept:'공무팀', name:'최승준', grade:'매니저', joined:'2026-01', attended:true, note:'부산사무소'},
-      {company:'인터렉스메가라인', dept:'안전품질팀', name:'박정수', grade:'매니저', joined:'2026-02', attended:true},
-      {company:'인터렉스메가라인', dept:'해사지원팀', name:'최정훈', grade:'매니저', joined:'2026-03', attended:true},
-      {company:'좋은사람들', dept:'영업본부 미디어커머스팀', name:'구병우', grade:'책임(L1)', joined:'2026-01', attended:true},
-      {company:'좋은사람들', dept:'영업본부 멀티채널팀', name:'김정향', grade:'선임', joined:'2026-04', attended:true},
-      {company:'좋은사람들', dept:'브랜드커머스본부', name:'김영민', grade:'수석(L3)', joined:'2026-06', attended:true},
-      {company:'상일식품·미찌푸드', dept:'영업본부', name:'이진경', grade:'선임', joined:'2026-02', attended:true},
-      {company:'상일식품·미찌푸드', dept:'영업본부', name:'이지수', grade:'매니저', joined:'2026-02', attended:true},
-      {company:'상일식품·미찌푸드', dept:'영업본부', name:'정유진', grade:'매니저', joined:'2026-03', attended:true},
-      {company:'상일식품·미찌푸드', dept:'관리본부(회계팀)', name:'권수아', grade:'매니저', joined:'2026-06', attended:false, note:'불참 · 자금 업무'},
-    ],
+    // 참석자 명단 — AES-256-GCM 암호문(성명·소속·직급). 복호화 키는 Firestore secure_config/roster (관리자·열람 계정만 읽기)
+    attendees:[], attendeesEnc:'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',
   },
 ];
 let obSessSel = null;   // 선택된 회차 id (미지정 시 가장 최근 done 회차 자동 선택)
@@ -1920,7 +1860,8 @@ function renderObSessDetail() {
     + '<td style="font-size:12px;color:var(--text2);line-height:1.5;">'+c.detail+'</td>'
     + '<td style="font-size:12px;">'+c.trainer+'</td></tr>').join('');
 
-  const att = s.attendees.map((a,i) =>
+  const locked = !!s.attendeesEnc && !(s.attendees && s.attendees.length);   // 명단은 암호문 — 복호화 전/실패 시 잠금 표시
+  const att = (s.attendees||[]).map((a,i) =>
       '<tr><td style="color:var(--gray);font-size:11.5px;">'+(i+1)+'</td>'
     + '<td><span class="td-company">'+a.company+'</span></td>'
     + '<td style="font-size:12px;color:var(--text2);">'+a.dept+'</td>'
@@ -1941,11 +1882,43 @@ function renderObSessDetail() {
     +   '<table><thead><tr><th>시간</th><th>구분</th><th>강의 제목</th><th>상세 내용</th><th>강사/참석자</th></tr></thead>'
     +   '<tbody>'+curr+'</tbody></table>'
     + '</div>'
-    + '<div class="table-box">'
-    +   '<div class="table-head"><div class="table-head-title">참석자 명단 ('+s.attendees.length+'명 중 '+s.attendees.filter(a=>a.attended).length+'명 참석)</div></div>'
-    +   '<table><thead><tr><th>#</th><th>소속사</th><th>부서</th><th>성명</th><th>직급</th><th>입사</th><th>참석</th></tr></thead>'
-    +   '<tbody>'+att+'</tbody></table>'
-    + '</div>';
+    + (locked
+      ? '<div class="table-box" style="padding:20px;"><div class="table-head-title">참석자 명단 🔒 (암호화됨 · '+(s.targetCount||0)+'명 중 '+(s.attendedCount||0)+'명 참석)</div>'
+        + '<div style="font-size:12.5px;color:var(--gray);margin-top:8px;line-height:1.6;">'+(OB_ROSTER_MSG||'명단을 불러오는 중입니다…')+'</div></div>'
+      : '<div class="table-box">'
+        +   '<div class="table-head"><div class="table-head-title">참석자 명단 ('+(s.attendees||[]).length+'명 중 '+(s.attendees||[]).filter(a=>a.attended).length+'명 참석)</div></div>'
+        +   '<table><thead><tr><th>#</th><th>소속사</th><th>부서</th><th>성명</th><th>직급</th><th>입사</th><th>참석</th></tr></thead>'
+        +   '<tbody>'+att+'</tbody></table>'
+        + '</div>');
+}
+
+// 참석자 명단 복호화 — 저장소에는 AES-256-GCM 암호문(attendeesEnc)만 있다(공개 저장소·정적 호스팅 노출 방지).
+//   키는 Firestore secure_config/roster 의 k(base64) — 규칙상 관리자·열람 계정만 읽는다. 로그인 뒤에만 호출한다.
+//   포맷: base64( iv(12) | 암호문 | 태그(16) ), AAD = 회차 id.  키가 없거나 읽기 실패해도 건수 중심 화면은 그대로 동작한다.
+let OB_ROSTER_MSG = '';
+async function obLoadRosters() {
+  const pending = OB_SESSIONS.filter(s => s.attendeesEnc && !(s.attendees && s.attendees.length));
+  if (!pending.length) return;
+  try {
+    if (!window.crypto || !crypto.subtle) throw new Error('이 브라우저는 복호화를 지원하지 않습니다(HTTPS 필요)');
+    ensureFirebaseApp();
+    const snap = await firebase.firestore().collection('secure_config').doc('roster').get();
+    const k = snap.exists && snap.data().k;
+    if (!k) throw new Error('열람 키가 아직 등록되지 않았습니다(secure_config/roster)');
+    const b64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', b64(k), 'AES-GCM', false, ['decrypt']);
+    for (const s of pending) {
+      const buf = b64(s.attendeesEnc);
+      const pt = await crypto.subtle.decrypt(
+        { name:'AES-GCM', iv: buf.slice(0,12), additionalData: new TextEncoder().encode(s.id) }, key, buf.slice(12));
+      s.attendees = JSON.parse(new TextDecoder().decode(pt));
+    }
+    OB_ROSTER_MSG = '';
+  } catch (e) {
+    console.warn('[roster]', e);
+    OB_ROSTER_MSG = '명단을 열람할 수 없습니다 — ' + (e && e.message ? e.message : '권한 없음') + '. 관리자·열람 계정으로 로그인해 주세요.';
+  }
+  if (document.getElementById('obSessDetail')) renderObSessDetail();
 }
 
 // ══════════════════════════════════════════════════════════════
