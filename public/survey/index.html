@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>교육 만족도 설문 · ’26 하반기 신규입사자 통합교육</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+:root{--pink:#E82076;--ink:#1a1d26;--sub:#464a53;--gray:#6b6e75;--line:#dadce0;--soft:#f4f5f6;--ok:#0f7d47;--bad:#c62828}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;word-break:keep-all;overflow-wrap:break-word;background:#eef0f3;color:var(--ink);line-height:1.6}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 48px}
+.head{background:#fff;border-radius:14px;border-top:5px solid var(--pink);padding:20px 20px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.head h1{font-size:19px;font-weight:900;letter-spacing:-.3px}
+.head p{font-size:13px;color:var(--sub);margin-top:6px}
+.head .meta{font-size:12px;color:var(--gray);margin-top:8px}
+.card{background:#fff;border-radius:14px;padding:18px 18px 14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.q{font-size:14.5px;font-weight:800;margin-bottom:2px}
+.qs{font-size:12px;color:var(--gray);margin-bottom:10px}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale label{position:relative}
+.scale input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer}
+.scale span{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px solid var(--line);border-radius:10px;padding:9px 0 7px;font-size:16px;font-weight:800;color:var(--sub);background:#fff}
+.scale small{font-size:10.5px;font-weight:500;color:var(--gray);margin-top:1px}
+.scale input:checked+span{border-color:var(--pink);background:#fdeaf2;color:var(--pink)}
+.scale input:focus-visible+span{outline:2px solid var(--pink)}
+.opts{display:grid;gap:7px}
+.opts label{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer}
+.opts input{accent-color:var(--pink);width:17px;height:17px}
+.opts label:has(input:checked){border-color:var(--pink);background:#fdeaf2;font-weight:700}
+textarea{width:100%;min-height:78px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;resize:vertical}
+textarea:focus{outline:none;border-color:var(--pink)}
+.cnt{font-size:11px;color:var(--gray);text-align:right;margin-top:3px}
+.btn{width:100%;border:none;border-radius:12px;background:var(--pink);color:#fff;font:inherit;font-size:16px;font-weight:900;padding:14px;cursor:pointer;margin-top:6px}
+.btn:disabled{background:#c9cbd0;cursor:default}
+.err{color:var(--bad);font-size:13px;font-weight:700;margin:8px 2px;min-height:20px}
+.done{text-align:center;padding:36px 20px}
+.done .big{font-size:42px}
+.done h2{font-size:18px;font-weight:900;margin:8px 0 6px}
+.done p{font-size:13.5px;color:var(--sub)}
+.hide{display:none}
+.note{font-size:11.5px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>교육 만족도 설문</h1>
+    <p>’26 하반기 신규입사자 통합교육 (2026. 10. 20. 마포타워)</p>
+    <div class="meta">소요 시간 약 2분 · 문항 8개 · 성명 입력 없음</div>
+  </div>
+
+  <div id="bad" class="card hide"><div class="done"><div class="big">🔗</div><h2>설문 링크를 확인해 주세요</h2>
+    <p>메일로 받은 개인 링크로 접속해야 응답할 수 있습니다.<br>문제가 계속되면 비제조부문 인사팀에 문의해 주세요.</p></div></div>
+
+  <form id="form" class="hide" onsubmit="return false">
+    <div class="card"><div class="q">1. 과정 안내</div><div class="qs">교육 목적과 일정 안내가 도움이 되었나요?</div><div class="scale" data-k="intro"></div></div>
+    <div class="card"><div class="q">2. 성장계획 수립</div><div class="qs">김태길 책임 · 성장목표와 자기주도학습 전략</div><div class="scale" data-k="growth"></div></div>
+    <div class="card"><div class="q">3. SECO 비전과 미래전략</div><div class="qs">이성현 총괄대표 · 부문 비전과 나의 연결</div><div class="scale" data-k="vision"></div></div>
+    <div class="card"><div class="q">4. SECO 커뮤니케이션</div><div class="qs">팀원과 소통하는 합리적 대화 방법</div><div class="scale" data-k="comm"></div></div>
+    <div class="card"><div class="q">5. AI 워크플로우</div><div class="qs">오늘 배워 내일 바로 쓰는 실무 · 하루 랩업</div><div class="scale" data-k="ai"></div></div>
+    <div class="card"><div class="q">6. 전체 만족도</div><div class="qs">오늘 교육 전체에 대한 만족도</div><div class="scale" data-k="overall"></div></div>
+    <div class="card"><div class="q">7. 추천 의향</div><div class="qs">다음 신규입사자에게 이 교육을 권하시겠어요?</div>
+      <div class="opts">
+        <label><input type="radio" name="rec" value="적극 추천">👍 적극 추천</label>
+        <label><input type="radio" name="rec" value="추천">😊 추천</label>
+        <label><input type="radio" name="rec" value="보통">😐 보통</label>
+        <label><input type="radio" name="rec" value="추천 안 함">🙁 추천 안 함</label>
+      </div></div>
+    <div class="card"><div class="q">8. 의견 · 개선 제안 <span style="font-weight:500;color:var(--gray)">(선택)</span></div>
+      <div class="qs">좋았던 점이나 바라는 점을 자유롭게 적어 주세요</div>
+      <textarea id="cmt" maxlength="500" placeholder="예) 활동 시간이 더 길었으면 좋겠습니다"></textarea><div class="cnt"><span id="n">0</span>/500</div></div>
+    <div id="err" class="err"></div>
+    <button id="go" class="btn" type="button">제출하기</button>
+    <div class="note">응답은 교육 개선과 결과 보고(집계)에만 사용되며, 개인 링크로 1회만 제출할 수 있습니다.</div>
+  </form>
+
+  <div id="ok" class="card hide"><div class="done"><div class="big">🙏</div><h2>응답해 주셔서 감사합니다</h2><p>소중한 의견은 다음 교육 설계에 반영하겠습니다.</p></div></div>
+  <div id="dup" class="card hide"><div class="done"><div class="big">✅</div><h2>이미 제출하셨습니다</h2><p>설문은 1회만 제출할 수 있습니다.</p></div></div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyAG8EU1SpcaAo0uDy21hXLo-ut58smJRb8", authDomain:"ai-edu-seco.firebaseapp.com",
+  projectId:"ai-edu-seco", storageBucket:"ai-edu-seco.firebasestorage.app",
+  messagingSenderId:"58934449948", appId:"1:58934449948:web:216a4d0adf255083bbccd9"
+};
+const SURVEY_ID = '2026H2';
+const LABELS = ['매우 불만','불만','보통','만족','매우 만족'];
+const $ = id => document.getElementById(id);
+const token = (new URLSearchParams(location.search).get('t') || '').trim();
+
+document.querySelectorAll('.scale').forEach(el => {
+  el.innerHTML = [1,2,3,4,5].map(v =>
+    '<label><input type="radio" name="'+el.dataset.k+'" value="'+v+'"><span>'+v+'<small>'+LABELS[v-1]+'</small></span></label>').join('');
+});
+$('cmt').addEventListener('input', e => { $('n').textContent = e.target.value.length; });
+
+if (!/^[A-Za-z0-9]{12}$/.test(token)) {
+  $('bad').classList.remove('hide');
+} else {
+  $('form').classList.remove('hide');
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth(), db = firebase.firestore();
+  const ready = auth.signInAnonymously().catch(() => null);
+  const val = k => { const e = document.querySelector('input[name="'+k+'"]:checked'); return e ? e.value : null; };
+  $('go').addEventListener('click', async () => {
+    $('err').textContent = '';
+    const keys = ['intro','growth','vision','comm','ai','overall'];
+    const r = {};
+    for (const k of keys) { const v = val(k); if (!v) { $('err').textContent = '모든 점수 문항(1~6번)에 응답해 주세요'; return; } r[k] = parseInt(v, 10); }
+    const rec = val('rec');
+    if (!rec) { $('err').textContent = '추천 의향(7번)을 선택해 주세요'; return; }
+    $('go').disabled = true; $('go').textContent = '제출 중…';
+    try {
+      await ready;
+      await db.collection('onboarding_survey').doc(token).set({
+        survey: SURVEY_ID, intro:r.intro, growth:r.growth, vision:r.vision, comm:r.comm, ai:r.ai, overall:r.overall,
+        recommend: rec, comment: $('cmt').value.trim().slice(0,500),
+        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      $('form').classList.add('hide'); $('ok').classList.remove('hide'); window.scrollTo(0,0);
+    } catch (e) {
+      $('go').disabled = false; $('go').textContent = '제출하기';
+      if (e && e.code === 'permission-denied') { $('form').classList.add('hide'); $('dup').classList.remove('hide'); window.scrollTo(0,0); }
+      else $('err').textContent = '제출에 실패했습니다. 잠시 후 다시 시도해 주세요';
+    }
+  });
+}
+</script>
+</body>
+</html>
